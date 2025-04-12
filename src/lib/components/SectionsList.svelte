@@ -11,13 +11,16 @@
 	<h2>Video Sections</h2>
 	<ul>
 		{#each $videoData.sections as section, index}
-			<li
-				class:active={$currentSectionIndex === index}
-				on:click={() => currentSectionIndex.set(index)}
-			>
-				<div class="section-title">{section.title}</div>
-				<div class="section-time">{section.startTime} - {section.endTime}</div>
-				<div class="section-description">{section.description}</div>
+			<li>
+				<button
+					type="button"
+					class:active={$currentSectionIndex === index}
+					on:click={() => currentSectionIndex.set(index)}
+				>
+					<div class="section-title">{section.title}</div>
+					<div class="section-time">{section.startTime} - {section.endTime}</div>
+					<div class="section-description">{section.description}</div>
+				</button>
 			</li>
 		{/each}
 	</ul>
@@ -45,6 +48,15 @@
 	}
 
 	li {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+	}
+
+	button {
+		all: unset; /* Reset all default button styles */
+		display: block; /* Make buttons behave like block elements */
+		width: 100%; /* Ensure buttons span the full width */
 		padding: 0.75rem;
 		border-left: 4px solid transparent;
 		margin-bottom: 0.5rem;
@@ -52,11 +64,11 @@
 		transition: background-color 0.2s;
 	}
 
-	li:hover {
+	button:hover {
 		background-color: #eaeaea;
 	}
 
-	li.active {
+	button.active {
 		border-left-color: #3498db;
 		background-color: #e8f4fb;
 	}
