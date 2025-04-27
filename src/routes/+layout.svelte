@@ -5,6 +5,29 @@
 		{ label: 'Learn', path: '/learn' },
 		{ label: 'Explore', path: '/explore' }
 	];
+
+	import { onMount } from 'svelte';
+	import { supabase } from '$lib/supabase.js';
+
+	let dbConnected = $state(false);
+	let showIndicator = import.meta.env.DEV; // Only show in development mode
+
+	onMount(async () => {
+		if (showIndicator) {
+			try {
+				// Simple health check that doesn't require specific tables
+				const { data, error } = await supabase.auth.getSession();
+
+				if (!error) {
+					dbConnected = true;
+				} else {
+					throw error;
+				}
+			} catch (e) {
+				dbConnected = false;
+			}
+		}
+	});
 </script>
 
 <div class="app-container">
@@ -28,6 +51,12 @@
 	<div class="main-content">
 		<slot></slot>
 	</div>
+
+	{#if showIndicator}
+		<div class="dev-indicator" class:connected={dbConnected} class:disconnected={!dbConnected}>
+			Supabase: {dbConnected ? 'Connected' : 'Disconnected'}
+		</div>
+	{/if}
 
 	<footer>
 		<p>© 2025 LearningSpace</p>
@@ -79,5 +108,32 @@
 		padding: 1rem;
 		text-align: center;
 		background-color: #f8f8f8;
+	}
+
+	.dev-indicator {
+		position: fixed;
+		bottom: 10px;
+		right: 10px;
+		padding: 8px 12px;
+		border-radius: 4px;
+		font-size: 12px;
+		font-family: monospace;
+		z-index: 9999;
+		opacity: 0.8;
+		transition: opacity 0.3s;
+	}
+
+	.dev-indicator:hover {
+		opacity: 1;
+	}
+
+	.connected {
+		background-color: #10b981;
+		color: white;
+	}
+
+	.disconnected {
+		background-color: #ef4444;
+		color: white;
 	}
 </style>
