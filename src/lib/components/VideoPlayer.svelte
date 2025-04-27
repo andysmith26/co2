@@ -56,47 +56,53 @@
 	}
 </style>
 
-<script>
+<script lang="ts">
 	import { onMount } from 'svelte';
 	import { videoData, currentSectionIndex } from '$lib/stores/videoStore';
-	import { derived, effect } from 'svelte';
 
-	let player: YT.Player | undefined;
-	let playerElement;
-	let isPlaying = false;
-	let timeUpdateInterval;
-	let currentTime = '00:00';
-	let duration = '00:00';
+	// YouTube Player type declaration
+	type YouTubePlayer = {
+		seekTo: (seconds: number, allowSeekAhead: boolean) => void;
+		playVideo: () => void;
+		pauseVideo: () => void;
+		getCurrentTime: () => number;
+		getDuration: () => number;
+		destroy: () => void;
+	};
+
+	let player: YouTubePlayer | undefined = undefined;
+	let playerElement: HTMLDivElement | undefined = undefined;
+	let isPlaying = $state(false);
+	let currentTime = $state('00:00');
+	let duration = $state('00:00');
+	let timeUpdateInterval: number | undefined;
 
 	// Function to convert time string (MM:SS) to seconds
-	function convertTimeToSeconds(timeString) {
+	function convertTimeToSeconds(timeString: any) {
 		const [minutes, seconds] = timeString.split(':').map(Number);
 		return minutes * 60 + seconds;
 	}
 
 	// Function to format seconds to MM:SS
-	function formatTime(seconds) {
+	function formatTime(seconds: any) {
 		if (isNaN(seconds) || seconds < 0) seconds = 0;
-
 		const mins = Math.floor(seconds / 60);
 		const secs = Math.floor(seconds % 60);
 		return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 	}
+
 	// Subscribe to changes in currentSectionIndex
 	$effect(() => {
 		if (player && $currentSectionIndex >= 0 && $videoData.sections[$currentSectionIndex]) {
-			// Navigate to the start time of the selected section
 			const startTime = convertTimeToSeconds($videoData.sections[$currentSectionIndex].startTime);
 			player.seekTo(startTime, true);
-			// Optionally auto-play when navigating
 			player.playVideo();
 		}
 	});
-	}
 
 	// Update the current section based on video time
 	function updateCurrentSection() {
-		if (!player || !player.getCurrentTime) return;
+		if (!player?.getCurrentTime) return;
 
 		const timeInSeconds = player.getCurrentTime();
 
@@ -140,37 +146,39 @@
 			}
 
 			if (timeUpdateInterval) {
-				clearInterval(timeUpdateInterval);
+				window.clearInterval(timeUpdateInterval);
 			}
 		};
 	});
 
 	function initPlayer() {
+		if (!playerElement) return;
+
 		player = new YT.Player(playerElement, {
 			videoId: $videoData.videoId,
 			playerVars: {
 				playsinline: 1,
-				rel: 0, // Don't show related videos
-				modestbranding: 1 // Hide most YouTube branding
+				rel: 0,
+				modestbranding: 1,
 			},
 			events: {
 				onStateChange: handlePlayerStateChange,
-				onReady: handlePlayerReady
-			}
-		});
+				onReady: handlePlayerReady,
+			},
+		}) as YouTubePlayer;
 	}
 
 	function handlePlayerReady() {
 		// Get video duration
-		if (player.getDuration) {
+		if (player?.getDuration) {
 			duration = formatTime(player.getDuration());
 		}
 
 		// Set up interval to check current time and update current section
-		timeUpdateInterval = setInterval(updateCurrentSection, 500);
+		timeUpdateInterval = window.setInterval(updateCurrentSection, 500);
 	}
 
-	function handlePlayerStateChange(event) {
+	function handlePlayerStateChange(event: YT.PlayerEvent) {
 		// Update isPlaying based on player state
 		isPlaying = event.data === YT.PlayerState.PLAYING;
 	}
@@ -192,7 +200,7 @@
 		<div bind:this={playerElement}></div>
 	</div>
 	<div class="controls">
-		<button on:click={togglePlayPause}>
+		<button onclick={togglePlayPause}>
 			{isPlaying ? 'Pause' : 'Play'}
 		</button>
 		<div class="time-display">{currentTime} / {duration}</div>

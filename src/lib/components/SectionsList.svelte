@@ -1,31 +1,3 @@
-<script>
-	import { videoData, currentSectionIndex } from '$lib/stores/videoStore';
-
-	function convertTimeToSeconds(timeString) {
-		const [minutes, seconds] = timeString.split(':').map(Number);
-		return minutes * 60 + seconds;
-	}
-</script>
-
-<div class="sections-list">
-	<h2>Video Sections</h2>
-	<ul>
-		{#each $videoData.sections as section, index}
-			<li>
-				<button
-					type="button"
-					class:active={$currentSectionIndex === index}
-					on:click={() => currentSectionIndex.set(index)}
-				>
-					<div class="section-title">{section.title}</div>
-					<div class="section-time">{section.startTime} - {section.endTime}</div>
-					<div class="section-description">{section.description}</div>
-				</button>
-			</li>
-		{/each}
-	</ul>
-</div>
-
 <style>
 	.sections-list {
 		background-color: #f8f8f8;
@@ -54,9 +26,9 @@
 	}
 
 	button {
-		all: unset; /* Reset all default button styles */
-		display: block; /* Make buttons behave like block elements */
-		width: 100%; /* Ensure buttons span the full width */
+		all: unset;
+		display: block;
+		width: 100%;
 		padding: 0.75rem;
 		border-left: 4px solid transparent;
 		margin-bottom: 0.5rem;
@@ -89,3 +61,31 @@
 		color: #444;
 	}
 </style>
+
+<script lang="ts">
+	import { videoData, currentSectionIndex } from '$lib/stores/videoStore';
+
+	function convertTimeToSeconds(timeString: string): number {
+		const [minutes, seconds] = timeString.split(':').map(Number);
+		return minutes * 60 + seconds;
+	}
+</script>
+
+<div class="sections-list">
+	<h2>Video Sections</h2>
+	<ul>
+		{#each $videoData.sections as section, index}
+			<li>
+				<button
+					type="button"
+					class:active={$currentSectionIndex === index}
+					onclick={() => currentSectionIndex.set(index)}
+				>
+					<div class="section-title">{section.title}</div>
+					<div class="section-time">{section.startTime} - {section.endTime}</div>
+					<div class="section-description">{section.description}</div>
+				</button>
+			</li>
+		{/each}
+	</ul>
+</div>
