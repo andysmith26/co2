@@ -1,8 +1,67 @@
+<style>
+	.video-player {
+		background-color: #f8f8f8;
+		border-radius: 0.5rem;
+		overflow: hidden;
+		padding: 1rem;
+	}
+
+	h2 {
+		margin-top: 0;
+		margin-bottom: 1rem;
+		font-size: 1.25rem;
+	}
+
+	.video-container {
+		position: relative;
+		width: 100%;
+		padding-bottom: 56.25%; /* 16:9 aspect ratio */
+	}
+
+	.video-container > div {
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 100%;
+	}
+
+	.controls {
+		padding: 1rem 0;
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+		justify-content: center;
+	}
+
+	button {
+		padding: 0.5rem 1rem;
+		background-color: #3498db;
+		color: white;
+		border: none;
+		border-radius: 0.25rem;
+		cursor: pointer;
+	}
+
+	button:hover {
+		background-color: #2980b9;
+	}
+
+	.time-display {
+		padding: 0.5rem;
+		background-color: #2c3e50;
+		color: white;
+		border-radius: 0.25rem;
+		font-family: monospace;
+	}
+</style>
+
 <script>
 	import { onMount } from 'svelte';
 	import { videoData, currentSectionIndex } from '$lib/stores/videoStore';
+	import { derived, effect } from 'svelte';
 
-	let player;
+	let player: YT.Player | undefined;
 	let playerElement;
 	let isPlaying = false;
 	let timeUpdateInterval;
@@ -23,14 +82,16 @@
 		const secs = Math.floor(seconds % 60);
 		return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 	}
-
 	// Subscribe to changes in currentSectionIndex
-	$: if (player && $currentSectionIndex >= 0 && $videoData.sections[$currentSectionIndex]) {
-		// Navigate to the start time of the selected section
-		const startTime = convertTimeToSeconds($videoData.sections[$currentSectionIndex].startTime);
-		player.seekTo(startTime, true);
-		// Optionally auto-play when navigating
-		player.playVideo();
+	$effect(() => {
+		if (player && $currentSectionIndex >= 0 && $videoData.sections[$currentSectionIndex]) {
+			// Navigate to the start time of the selected section
+			const startTime = convertTimeToSeconds($videoData.sections[$currentSectionIndex].startTime);
+			player.seekTo(startTime, true);
+			// Optionally auto-play when navigating
+			player.playVideo();
+		}
+	});
 	}
 
 	// Update the current section based on video time
@@ -137,61 +198,3 @@
 		<div class="time-display">{currentTime} / {duration}</div>
 	</div>
 </div>
-
-<style>
-	.video-player {
-		background-color: #f8f8f8;
-		border-radius: 0.5rem;
-		overflow: hidden;
-		padding: 1rem;
-	}
-
-	h2 {
-		margin-top: 0;
-		margin-bottom: 1rem;
-		font-size: 1.25rem;
-	}
-
-	.video-container {
-		position: relative;
-		width: 100%;
-		padding-bottom: 56.25%; /* 16:9 aspect ratio */
-	}
-
-	.video-container > div {
-		position: absolute;
-		top: 0;
-		left: 0;
-		width: 100%;
-		height: 100%;
-	}
-
-	.controls {
-		padding: 1rem 0;
-		display: flex;
-		align-items: center;
-		gap: 1rem;
-		justify-content: center;
-	}
-
-	button {
-		padding: 0.5rem 1rem;
-		background-color: #3498db;
-		color: white;
-		border: none;
-		border-radius: 0.25rem;
-		cursor: pointer;
-	}
-
-	button:hover {
-		background-color: #2980b9;
-	}
-
-	.time-display {
-		padding: 0.5rem;
-		background-color: #2c3e50;
-		color: white;
-		border-radius: 0.25rem;
-		font-family: monospace;
-	}
-</style>
