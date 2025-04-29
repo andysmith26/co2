@@ -60,7 +60,7 @@ async function testConnection() {
     console.log(`Database URL: ${supabaseUrl}`);
     console.log(`Found ${count} students in database`);
     return true;
-  } catch (err: any) {
+  } catch (err) {
     console.error('❌ Supabase connection failed:', err.message);
     console.log('Check your environment variables in Vercel or .env file');
     return false;
