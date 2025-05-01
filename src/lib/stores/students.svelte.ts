@@ -27,7 +27,7 @@ class StudentStore {
     this.error = null;
     
     try {
-      const response = await fetch('/api/students-wrong');
+      const response = await fetch('/api/students');
       
       if (!response.ok) {
         const errorData = await response.json();
