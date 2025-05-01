@@ -19,6 +19,8 @@
 		display: flex;
 		list-style: none;
 		gap: 1.5rem;
+		margin: 0;
+		padding: 0;
 	}
 
 	nav a {
@@ -74,27 +76,51 @@
 </style>
 
 <script lang="ts">
-	// Simple navigation for now, will expand later
-	const navItems = [
-		{ label: 'Dashboard', path: '/' },
-		{ label: 'Learn', path: '/learn' },
-		{ label: 'Explore', path: '/explore' },
-		{ label: 'Students', path: '/students' },
-	];
+	import { invalidate } from '$app/navigation';
 	import { onMount } from 'svelte';
-	import { checkConnection } from '$lib/supabase';
+	import { browser } from '$app/environment';
 
-	// Only check connection in dev mode
-	let dbConnected = $state(false);
-	let connectionError = $state<string | null>(null);
-	let showIndicator = import.meta.env.DEV;
+	let { data } = $props();
+	let { session, supabase } = $derived(data);
 
+	// Navigation items
+	const navItems = [
+		{ path: '/', label: 'Home' },
+		{ path: '/learn', label: 'Learn' },
+		{ path: '/students', label: 'Students' },
+	];
+
+	// Dev mode indicator
+	let showIndicator = browser && process.env.NODE_ENV !== 'production';
+	let dbConnected = false;
+	let connectionError = '';
+
+	// Check connection status
 	onMount(async () => {
-		if (showIndicator) {
-			const status = await checkConnection();
-			dbConnected = status.connected;
-			connectionError = status.error;
+		if (browser && supabase) {
+			try {
+				const { data } = await supabase.auth.getSession();
+				dbConnected = !!data.session || true; // Set to true even without session for basic connectivity check
+			} catch (err) {
+				connectionError = err.message;
+				dbConnected = false;
+			}
 		}
+
+		// Set up auth state listener
+		const {
+			data: { subscription },
+		} = supabase?.auth.onAuthStateChange((event, newSession) => {
+			// When the auth state changes, invalidate the session data
+			if (newSession?.expires_at !== session?.expires_at) {
+				invalidate('supabase:auth');
+			}
+		}) || { data: { subscription: null } };
+
+		// Clean up subscription when component unmounts
+		return () => {
+			subscription?.unsubscribe();
+		};
 	});
 </script>
 
@@ -111,8 +137,13 @@
 			</ul>
 		</nav>
 		<div class="user-menu">
-			<!-- Placeholder for user menu -->
-			<button>Sign In</button>
+			{#if session}
+				<a href="/(protected)/dashboard">Dashboard</a>
+				<!-- Show user email if available -->
+				<span style="margin: 0 10px;">{session.user.email.split('@')[0]}</span>
+			{:else}
+				<a href="/login">Sign In</a>
+			{/if}
 		</div>
 	</header>
 

@@ -72,8 +72,11 @@
 </style>
 
 <script lang="ts">
-	import { goto } from '$app/navigation';
-	import { supabase } from '$lib/supabase';
+	import { invalidate } from '$app/navigation';
+	import { browser } from '$app/environment';
+
+	let { data } = $props();
+	let { supabase } = $derived(data);
 
 	let email = '';
 	let password = '';
@@ -85,15 +88,21 @@
 		error = '';
 
 		try {
-			const { error: authError } = await supabase.auth.signInWithPassword({
+			// Use the provided Supabase client
+			const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
 				email,
 				password,
 			});
 
 			if (authError) throw authError;
 
-			goto('/dashboard');
+			// Invalidate the auth data
+			await invalidate('supabase:auth');
+
+			// Redirect to dashboard - using window.location for full page reload to ensure cookies are properly set
+			window.location.href = '/(protected)/dashboard';
 		} catch (err) {
+			console.error('Login error:', err);
 			error = err.message;
 		} finally {
 			loading = false;

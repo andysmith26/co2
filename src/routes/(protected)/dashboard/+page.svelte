@@ -1,105 +1,122 @@
 <style>
-	.dashboard {
-		padding: 1rem;
-	}
-
 	.dashboard-header {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
 		margin-bottom: 2rem;
-		padding-bottom: 1rem;
-		border-bottom: 1px solid #eee;
 	}
 
-	.user-info {
-		display: flex;
-		align-items: center;
-		gap: 1rem;
+	.dashboard-header h1 {
+		margin-top: 0;
+		margin-bottom: 0.5rem;
 	}
 
-	.logout-button {
-		padding: 0.5rem 1rem;
-		background-color: #f8f9fa;
-		border: 1px solid #ddd;
-		border-radius: 4px;
-		cursor: pointer;
+	.dashboard-header p {
+		color: #6c757d;
+		font-size: 1.1rem;
+		margin: 0;
 	}
 
-	.dashboard-content {
+	.dashboard-grid {
 		display: grid;
-		gap: 2rem;
+		grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+		gap: 1.5rem;
 	}
 
-	.students-section {
+	.card {
 		background-color: white;
 		border-radius: 8px;
 		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-		padding: 1.5rem;
-	}
-
-	.student-list {
-		list-style: none;
-		padding: 0;
-		margin: 1rem 0 0;
-	}
-
-	.student-item {
+		overflow: hidden;
 		display: flex;
-		justify-content: space-between;
-		padding: 0.75rem;
-		border-bottom: 1px solid #eee;
+		flex-direction: column;
 	}
 
-	.student-item:last-child {
-		border-bottom: none;
+	.card-header {
+		padding: 1.25rem;
+		border-bottom: 1px solid #f0f0f0;
 	}
 
-	.student-status {
-		padding: 0.25rem 0.5rem;
-		border-radius: 4px;
-		font-size: 0.875rem;
+	.card-header h3 {
+		margin: 0;
+		font-size: 1.25rem;
+		color: #333;
 	}
 
-	.present {
-		background-color: #e8f5e9;
-		color: #2e7d32;
+	.card-content {
+		padding: 1.5rem;
+		flex: 1;
 	}
 
-	.absent {
-		background-color: #ffebee;
-		color: #c62828;
+	.card-footer {
+		padding: 1rem 1.25rem;
+		background-color: #f9f9f9;
+		border-top: 1px solid #f0f0f0;
+	}
+
+	.card-link {
+		display: inline-block;
+		color: #3498db;
+		text-decoration: none;
+		font-weight: 500;
+	}
+
+	.card-link:hover {
+		text-decoration: underline;
+	}
+
+	.stat {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		text-align: center;
+	}
+
+	.stat-value {
+		font-size: 2.5rem;
+		font-weight: 700;
+		color: #3498db;
+	}
+
+	.stat-label {
+		font-size: 0.9rem;
+		color: #6c757d;
+		margin-top: 0.25rem;
+	}
+
+	.account-info p {
+		margin: 0.5rem 0;
 	}
 
 	.error {
-		color: #e74c3c;
-		background-color: #fdf1f0;
-		padding: 0.75rem;
-		border-radius: 4px;
-		margin-bottom: 1rem;
-	}
-
-	.retry-button {
-		padding: 0.5rem 1rem;
-		background-color: #3498db;
-		color: white;
-		border: none;
-		border-radius: 4px;
-		cursor: pointer;
+		color: #dc3545;
 	}
 </style>
 
-<script>
-	import { goto } from '$app/navigation';
-	import { supabase } from '$lib/supabase';
-	import { students, loading, error, fetchStudents } from '$lib/stores/students';
+<script lang="ts">
+	import { onMount } from 'svelte';
 
-	export let data;
+	let { data } = $props();
+	let { supabase, session } = $derived(data);
 
-	async function handleLogout() {
-		await supabase.auth.signOut();
-		goto('/login');
-	}
+	let studentCount = 0;
+	let isLoading = true;
+	let error = '';
+
+	onMount(async () => {
+		try {
+			// Get the count of students (example of using the authenticated client)
+			const { count, error: countError } = await supabase
+				.from('students')
+				.select('*', { count: 'exact', head: true });
+
+			if (countError) throw countError;
+
+			studentCount = count || 0;
+		} catch (err) {
+			error = err.message;
+			console.error('Error fetching data:', err);
+		} finally {
+			isLoading = false;
+		}
+	});
 </script>
 
 <svelte:head>
@@ -108,40 +125,52 @@
 
 <div class="dashboard">
 	<header class="dashboard-header">
-		<h1>Dashboard</h1>
-		<div class="user-info">
-			<span>Welcome, {data.session.user.email}</span>
-			<button on:click={handleLogout} class="logout-button">Logout</button>
-		</div>
+		<h1>Welcome, {session?.user?.email?.split('@')[0] || 'Teacher'}</h1>
+		<p>Here's an overview of your account and activity.</p>
 	</header>
 
-	<div class="dashboard-content">
-		<section class="students-section">
-			<h2>Students</h2>
+	<div class="dashboard-grid">
+		<div class="card">
+			<div class="card-header">
+				<h3>Students</h3>
+			</div>
+			<div class="card-content">
+				{#if isLoading}
+					<p>Loading...</p>
+				{:else if error}
+					<p class="error">Error: {error}</p>
+				{:else}
+					<div class="stat">
+						<span class="stat-value">{studentCount}</span>
+						<span class="stat-label">Total Students</span>
+					</div>
+				{/if}
+			</div>
+			<div class="card-footer">
+				<a href="/students" class="card-link">View Students</a>
+			</div>
+		</div>
 
-			{#if $loading}
-				<p>Loading...</p>
-			{:else if $error}
-				<p class="error">{$error}</p>
-				<button on:click={fetchStudents} class="retry-button">Retry</button>
-			{:else if $students.length === 0}
-				<p>No students available. Add your first student.</p>
-			{:else}
-				<ul class="student-list">
-					{#each $students as student}
-						<li class="student-item">
-							<span class="student-name">{student.first_name} {student.last_initial}.</span>
-							<span
-								class="student-status"
-								class:present={student.status === 'present'}
-								class:absent={student.status === 'absent'}
-							>
-								{student.status}
-							</span>
-						</li>
-					{/each}
-				</ul>
-			{/if}
-		</section>
+		<div class="card">
+			<div class="card-header">
+				<h3>Account</h3>
+			</div>
+			<div class="card-content">
+				{#if session?.user}
+					<div class="account-info">
+						<p><strong>Email:</strong> {session.user.email}</p>
+						<p>
+							<strong>Last Sign In:</strong>
+							{new Date(session.user.last_sign_in_at || Date.now()).toLocaleString()}
+						</p>
+					</div>
+				{:else}
+					<p>Session information not available</p>
+				{/if}
+			</div>
+			<div class="card-footer">
+				<a href="/(protected)/profile" class="card-link">Edit Profile</a>
+			</div>
+		</div>
 	</div>
 </div>
