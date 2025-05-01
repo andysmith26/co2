@@ -1,8 +1,7 @@
-// src/lib/stores/students.svelte.ts
-import { supabase } from '$lib/supabase';
+// src/lib/stores/students.ts (replacing students.svelte.ts)
 import { browser } from '$app/environment';
 
-// Define the Student interface
+// Student type definition
 interface Student {
   id: string;
   teacher_id: string;
@@ -28,17 +27,15 @@ class StudentStore {
     this.error = null;
     
     try {
-      // In development mode, fetch all students without filtering by teacher_id
-      const { data, error } = await supabase
-        .from('students')
-        .select('id, teacher_id, first_name, last_initial, status')
-        .order('first_name', { ascending: true });
+      const response = await fetch('/api/students-wrong');
       
-      if (error) throw error;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch students');
+      }
       
+      const data = await response.json();
       this.studentList = data || [];
-      
-      console.log('Fetched students:', this.studentList);
     } catch (err: any) {
       console.error('Error fetching students:', err);
       this.error = err.message;
@@ -51,7 +48,6 @@ class StudentStore {
     return this.studentList;
   }
   
-  // Simple toggle status function
   async toggleStudentStatus(studentId: string) {
     try {
       // Find current student
@@ -61,12 +57,16 @@ class StudentStore {
       // Toggle status
       const newStatus = student.status === 'present' ? 'absent' : 'present';
       
-      const { error } = await supabase
-        .from('students')
-        .update({ status: newStatus })
-        .eq('id', studentId);
+      const response = await fetch(`/api/students/${studentId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      });
       
-      if (error) throw error;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update student status');
+      }
       
       // Update local state
       this.studentList = this.studentList.map(s => 
@@ -78,8 +78,7 @@ class StudentStore {
     }
   }
 
-  // Add to the StudentStore class
-async addStudent(firstName: string, lastInitial: string) {
+  async addStudent(firstName: string, lastInitial: string) {
     this.loading = true;
     this.error = null;
     
@@ -89,21 +88,21 @@ async addStudent(firstName: string, lastInitial: string) {
         throw new Error('First name and last initial are required');
       }
       
-      // Use a default teacher_id
-      const teacherId = '00000000-0000-0000-0000-000000000000';
-      
-      const { data, error } = await supabase
-        .from('students')
-        .insert({
-          teacher_id: teacherId,
+      const response = await fetch('/api/students', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           first_name: firstName,
-          last_initial: lastInitial.charAt(0).toUpperCase(),
-          status: 'absent'
+          last_initial: lastInitial.charAt(0).toUpperCase()
         })
-        .select()
-        .single();
+      });
       
-      if (error) throw error;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to add student');
+      }
+      
+      const data = await response.json();
       
       // Update local state
       this.studentList = [...this.studentList, data];

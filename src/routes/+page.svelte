@@ -158,32 +158,15 @@
 			duration: '12:45',
 		},
 	];
-
-	import { students, loading, error, fetchStudents, addStudent } from '$lib/stores/students';
-
-	let firstName = '';
-	let lastInitial = '';
-
-	function handleSubmit() {
-		addStudent(firstName, lastInitial)
-			.then(() => {
-				firstName = '';
-				lastInitial = '';
-			})
-			.catch((err) => {
-				// Error already handled in store
-			});
-	}
 </script>
 
 <svelte:head>
-	<title>Dashboard | LearningSpace</title>
+	<title>Dashboard | LearningWhatever</title>
 </svelte:head>
 
 <div class="dashboard">
 	<section class="welcome-section">
-		<h1>Welcome to LearningSpace</h1>
-		<p>Your personalized learning journey starts here</p>
+		<h1>Welcome to LearningWhatever</h1>
 	</section>
 
 	<section class="learning-paths">
@@ -224,36 +207,5 @@
 				</a>
 			{/each}
 		</div>
-	</section>
-
-	<section class="student-list">
-		<h1>Student List</h1>
-
-		<form on:submit|preventDefault={handleSubmit}>
-			<div>
-				<label for="firstName">First Name</label>
-				<input id="firstName" bind:value={firstName} required />
-			</div>
-
-			<div>
-				<label for="lastInitial">Last Initial</label>
-				<input id="lastInitial" bind:value={lastInitial} maxlength="1" required />
-			</div>
-
-			<button type="submit" disabled={$loading}>Add Student</button>
-		</form>
-
-		{#if $loading}
-			<p>Loading...</p>
-		{:else if $error}
-			<p class="error">{$error}</p>
-			<button on:click={fetchStudents}>Retry</button>
-		{:else}
-			<ul>
-				{#each $students as student}
-					<li>{student.first_name} {student.last_initial}.</li>
-				{/each}
-			</ul>
-		{/if}
 	</section>
 </div>
