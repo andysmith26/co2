@@ -1,4 +1,4 @@
-<!-- components/Creation/ConnectionCreator.svelte -->
+
 <script>
   import { createEventDispatcher } from 'svelte';
   import { connectionTypes, nodeTypes } from '../../lib/data/enhanced-concepts';
