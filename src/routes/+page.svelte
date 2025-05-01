@@ -1,90 +1,3 @@
-<script>
-	// Sample learning paths (will come from API/store in the future)
-	const learningPaths = [
-		{
-			id: 'web-dev',
-			title: 'Web Development',
-			description: 'Learn modern web development techniques',
-			progress: 35,
-			modules: 8
-		},
-		{
-			id: 'data-science',
-			title: 'Data Science Fundamentals',
-			description: 'Explore data analysis and machine learning',
-			progress: 15,
-			modules: 12
-		}
-	];
-
-	// Sample recommended videos (will connect to your videoData store later)
-	const recommendedVideos = [
-		{
-			id: 'vid-1',
-			title: 'Introduction to React',
-			thumbnail: 'https://via.placeholder.com/320x180',
-			duration: '15:30'
-		},
-		{
-			id: 'vid-2',
-			title: 'CSS Grid Layout',
-			thumbnail: 'https://via.placeholder.com/320x180',
-			duration: '12:45'
-		}
-	];
-</script>
-
-<svelte:head>
-	<title>Dashboard | LearningSpace</title>
-</svelte:head>
-
-<div class="dashboard">
-	<section class="welcome-section">
-		<h1>Welcome to LearningSpace</h1>
-		<p>Your personalized learning journey starts here</p>
-	</section>
-
-	<section class="learning-paths">
-		<h2>Your Learning Paths</h2>
-		<div class="path-cards">
-			{#each learningPaths as path}
-				<div class="path-card">
-					<h3>{path.title}</h3>
-					<p>{path.description}</p>
-					<div class="progress-container">
-						<div class="progress-bar" style="width: {path.progress}%"></div>
-					</div>
-					<div class="progress-info">
-						<span>{path.progress}% complete</span>
-						<span>{path.modules} modules</span>
-					</div>
-					<a href={`/learn/${path.id}`} class="continue-btn">Continue Learning</a>
-				</div>
-			{/each}
-			<div class="path-card add-path">
-				<div class="add-icon">+</div>
-				<p>Discover new learning paths</p>
-				<a href="/explore" class="discover-btn">Explore</a>
-			</div>
-		</div>
-	</section>
-
-	<section class="recommendations">
-		<h2>Recommended for You</h2>
-		<div class="video-grid">
-			{#each recommendedVideos as video}
-				<a href={`/learn/video/${video.id}`} class="video-card">
-					<div class="thumbnail">
-						<img src={video.thumbnail} alt={video.title} />
-						<span class="duration">{video.duration}</span>
-					</div>
-					<h3>{video.title}</h3>
-				</a>
-			{/each}
-		</div>
-	</section>
-</div>
-
 <style>
 	.dashboard {
 		display: flex;
@@ -210,3 +123,137 @@
 		font-size: 0.8rem;
 	}
 </style>
+
+<script>
+	// Sample learning paths (will come from API/store in the future)
+	const learningPaths = [
+		{
+			id: 'web-dev',
+			title: 'Web Development',
+			description: 'Learn modern web development techniques',
+			progress: 35,
+			modules: 8,
+		},
+		{
+			id: 'data-science',
+			title: 'Data Science Fundamentals',
+			description: 'Explore data analysis and machine learning',
+			progress: 15,
+			modules: 12,
+		},
+	];
+
+	// Sample recommended videos (will connect to your videoData store later)
+	const recommendedVideos = [
+		{
+			id: 'vid-1',
+			title: 'Introduction to React',
+			thumbnail: 'https://via.placeholder.com/320x180',
+			duration: '15:30',
+		},
+		{
+			id: 'vid-2',
+			title: 'CSS Grid Layout',
+			thumbnail: 'https://via.placeholder.com/320x180',
+			duration: '12:45',
+		},
+	];
+
+	import { students, loading, error, fetchStudents, addStudent } from '$lib/stores/students';
+
+	let firstName = '';
+	let lastInitial = '';
+
+	function handleSubmit() {
+		addStudent(firstName, lastInitial)
+			.then(() => {
+				firstName = '';
+				lastInitial = '';
+			})
+			.catch((err) => {
+				// Error already handled in store
+			});
+	}
+</script>
+
+<svelte:head>
+	<title>Dashboard | LearningSpace</title>
+</svelte:head>
+
+<div class="dashboard">
+	<section class="welcome-section">
+		<h1>Welcome to LearningSpace</h1>
+		<p>Your personalized learning journey starts here</p>
+	</section>
+
+	<section class="learning-paths">
+		<h2>Your Learning Paths</h2>
+		<div class="path-cards">
+			{#each learningPaths as path}
+				<div class="path-card">
+					<h3>{path.title}</h3>
+					<p>{path.description}</p>
+					<div class="progress-container">
+						<div class="progress-bar" style="width: {path.progress}%"></div>
+					</div>
+					<div class="progress-info">
+						<span>{path.progress}% complete</span>
+						<span>{path.modules} modules</span>
+					</div>
+					<a href={`/learn/${path.id}`} class="continue-btn">Continue Learning</a>
+				</div>
+			{/each}
+			<div class="path-card add-path">
+				<div class="add-icon">+</div>
+				<p>Discover new learning paths</p>
+				<a href="/explore" class="discover-btn">Explore</a>
+			</div>
+		</div>
+	</section>
+
+	<section class="recommendations">
+		<h2>Recommended for You</h2>
+		<div class="video-grid">
+			{#each recommendedVideos as video}
+				<a href={`/learn/video/${video.id}`} class="video-card">
+					<div class="thumbnail">
+						<img src={video.thumbnail} alt={video.title} />
+						<span class="duration">{video.duration}</span>
+					</div>
+					<h3>{video.title}</h3>
+				</a>
+			{/each}
+		</div>
+	</section>
+
+	<section class="student-list">
+		<h1>Student List</h1>
+
+		<form on:submit|preventDefault={handleSubmit}>
+			<div>
+				<label for="firstName">First Name</label>
+				<input id="firstName" bind:value={firstName} required />
+			</div>
+
+			<div>
+				<label for="lastInitial">Last Initial</label>
+				<input id="lastInitial" bind:value={lastInitial} maxlength="1" required />
+			</div>
+
+			<button type="submit" disabled={$loading}>Add Student</button>
+		</form>
+
+		{#if $loading}
+			<p>Loading...</p>
+		{:else if $error}
+			<p class="error">{$error}</p>
+			<button on:click={fetchStudents}>Retry</button>
+		{:else}
+			<ul>
+				{#each $students as student}
+					<li>{student.first_name} {student.last_initial}.</li>
+				{/each}
+			</ul>
+		{/if}
+	</section>
+</div>
