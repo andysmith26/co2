@@ -1,3 +1,4 @@
+// src/hooks.server.ts
 import { createServerClient } from '@supabase/ssr';
 import { redirect, type Handle } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
@@ -55,22 +56,29 @@ const supabaseHandler: Handle = async ({ event, resolve }) => {
   });
 };
 
-// Auth guard for protected routes
 const authGuard: Handle = async ({ event, resolve }) => {
-  // Get the validated session
-  const { session } = await event.locals.getSession();
+    // Get the validated session
+    const { session } = await event.locals.getSession();
+    
+    // Identify protected routes by their actual URL paths
+    const protectedPaths = ['/dashboard', '/profile', '/signout'];
+    const isProtectedRoute = protectedPaths.some(path => 
+      event.url.pathname === path || event.url.pathname.startsWith(`${path}/`)
+    );
+    
+    // If trying to access protected route without session, redirect to login
+    if (isProtectedRoute && !session) {
+      // Encode the current URL to redirect back after login
+      const redirectTo = encodeURIComponent(event.url.pathname);
+      throw redirect(303, `/login?redirectTo=${redirectTo}`);
+    }
+    
+    // If user is logged in and tries to access login, redirect to dashboard
+    if (session && event.url.pathname === '/login') {
+      throw redirect(303, '/dashboard');
+    }
   
-  // Handle protected routes
-  if (!session && event.url.pathname.startsWith('/(protected)')) {
-    throw redirect(303, '/login');
-  }
-  
-  // If user is logged in and tries to access login, redirect to dashboard
-  if (session && event.url.pathname === '/login') {
-    throw redirect(303, '/(protected)/dashboard');
-  }
-
-  return resolve(event);
-};
+    return resolve(event);
+  };
 
 export const handle: Handle = sequence(supabaseHandler, authGuard);

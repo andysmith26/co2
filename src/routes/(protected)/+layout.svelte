@@ -94,11 +94,11 @@
 		</div>
 
 		<nav class="sidebar-nav">
-			<a href="/(protected)/dashboard" class="nav-item">
+			<a href="/dashboard" class="nav-item">
 				<span class="icon">📊</span>
 				<span>Dashboard</span>
 			</a>
-			<a href="/(protected)/profile" class="nav-item">
+			<a href="/profile" class="nav-item">
 				<span class="icon">👤</span>
 				<span>Profile</span>
 			</a>

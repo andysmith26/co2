@@ -33,7 +33,7 @@
 		<nav>
 			<a href="/">Home</a>
 			{#if session}
-				<a href="/(protected)/dashboard">Dashboard</a>
+				<a href="/dashboard">Dashboard</a>
 				<span>{user?.email}</span>
 				<form action="/signout" method="POST" style="display:inline;">
 					<button type="submit">Sign Out</button>
