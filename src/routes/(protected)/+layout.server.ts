@@ -1,21 +1,15 @@
-import { redirect, type Actions } from '@sveltejs/kit';
-import type { PageServerLoad } from './$types';
+import { redirect } from '@sveltejs/kit';
+import type { LayoutServerLoad } from './$types';
 
-// Simply having this file makes the directory a server route
-// The auth guard in hooks.server.ts will protect these routes
-
-export const load: PageServerLoad = async ({ locals }) => {
-  // This file ensures server-side protection of all routes
-  return {};
-};
-
-// Define actions for forms in protected routes
-export const actions: Actions = {
-  signout: async ({ locals, cookies }) => {
-    // Sign the user out
-    await locals.supabase.auth.signOut();
-    
-    // Redirect to the login page
+export const load: LayoutServerLoad = async ({ locals }) => {
+  // Get validated session
+  const { session } = await locals.getSession();
+  
+  // If there's no session, redirect to login
+  if (!session) {
     throw redirect(303, '/login');
   }
+  
+  // Return empty object - we already have session in the parent layout
+  return {};
 };

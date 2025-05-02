@@ -1,94 +1,26 @@
 <style>
-	.login-container {
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		min-height: calc(100vh - 200px);
-		padding: 2rem;
-	}
-
-	.login-card {
-		background-color: white;
-		border-radius: 8px;
-		box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-		padding: 2rem;
-		width: 100%;
-		max-width: 400px;
-	}
-
-	h1 {
-		margin-top: 0;
-		margin-bottom: 1.5rem;
-		color: #333;
-		text-align: center;
-	}
-
-	.form-group {
-		margin-bottom: 1.5rem;
-	}
-
-	label {
-		display: block;
-		margin-bottom: 0.5rem;
-		font-weight: 500;
-	}
-
-	input {
-		width: 100%;
-		padding: 0.75rem;
-		border: 1px solid #ddd;
-		border-radius: 4px;
-		font-size: 1rem;
-	}
-
-	.error {
-		color: #e74c3c;
-		background-color: #fdf1f0;
-		padding: 0.75rem;
-		border-radius: 4px;
-		margin-bottom: 1rem;
-	}
-
-	.login-button {
-		width: 100%;
-		padding: 0.75rem;
-		background-color: #3498db;
-		color: white;
-		border: none;
-		border-radius: 4px;
-		font-size: 1rem;
-		cursor: pointer;
-		transition: background-color 0.2s;
-	}
-
-	.login-button:hover {
-		background-color: #2980b9;
-	}
-
-	.login-button:disabled {
-		background-color: #95a5a6;
-		cursor: not-allowed;
-	}
+	/* Your styles here */
 </style>
 
 <script lang="ts">
 	import { invalidate } from '$app/navigation';
-	import { browser } from '$app/environment';
 
+	// Use $props rune for component props
 	let { data } = $props();
+	// Use $derived for computed values
 	let { supabase } = $derived(data);
 
-	let email = '';
-	let password = '';
-	let loading = false;
-	let error = '';
+	// Use $state for local reactive state
+	let email = $state('');
+	let password = $state('');
+	let loading = $state(false);
+	let error = $state('');
 
 	async function handleLogin() {
 		loading = true;
 		error = '';
 
 		try {
-			// Use the provided Supabase client
 			const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
 				email,
 				password,
@@ -99,7 +31,8 @@
 			// Invalidate the auth data
 			await invalidate('supabase:auth');
 
-			// Redirect to dashboard - using window.location for full page reload to ensure cookies are properly set
+			// Redirect to dashboard - use window.location for full page reload
+			// to ensure cookies are properly set
 			window.location.href = '/(protected)/dashboard';
 		} catch (err) {
 			console.error('Login error:', err);
@@ -109,10 +42,6 @@
 		}
 	}
 </script>
-
-<svelte:head>
-	<title>Login | LearningSpace</title>
-</svelte:head>
 
 <div class="login-container">
 	<div class="login-card">

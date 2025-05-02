@@ -1,4 +1,3 @@
-// src/hooks.server.ts
 import { createServerClient } from '@supabase/ssr';
 import { redirect, type Handle } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
@@ -6,9 +5,6 @@ import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/publi
 
 // Handle Supabase auth
 const supabaseHandler: Handle = async ({ event, resolve }) => {
-  /**
-   * Create a Supabase client specific to this server request
-   */
   event.locals.supabase = createServerClient(
     PUBLIC_SUPABASE_URL,
     PUBLIC_SUPABASE_ANON_KEY,
@@ -33,12 +29,23 @@ const supabaseHandler: Handle = async ({ event, resolve }) => {
     }
   );
 
-  /**
-   * Helper method to safely get and validate the session
-   */
+  // Add getSession helper for secure session validation
   event.locals.getSession = async () => {
     const { data: { session } } = await event.locals.supabase.auth.getSession();
-    return session;
+    
+    if (!session) {
+      return { session: null, user: null };
+    }
+    
+    // Validate the JWT by getting the user - recommended by Supabase
+    const { data: { user }, error } = await event.locals.supabase.auth.getUser();
+    
+    if (error) {
+      // JWT validation failed
+      return { session: null, user: null };
+    }
+    
+    return { session, user };
   };
 
   return resolve(event, {
@@ -48,12 +55,12 @@ const supabaseHandler: Handle = async ({ event, resolve }) => {
   });
 };
 
-// Protect routes that require authentication
+// Auth guard for protected routes
 const authGuard: Handle = async ({ event, resolve }) => {
-  // Get the session from the server
-  const session = await event.locals.getSession();
+  // Get the validated session
+  const { session } = await event.locals.getSession();
   
-  // Handle protected routes (any route under the /protected path)
+  // Handle protected routes
   if (!session && event.url.pathname.startsWith('/(protected)')) {
     throw redirect(303, '/login');
   }
@@ -66,5 +73,4 @@ const authGuard: Handle = async ({ event, resolve }) => {
   return resolve(event);
 };
 
-// Export the handle function with the sequence of handlers
 export const handle: Handle = sequence(supabaseHandler, authGuard);

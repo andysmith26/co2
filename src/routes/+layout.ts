@@ -6,40 +6,23 @@ export const load: LayoutLoad = async ({ data, depends, fetch }) => {
   // Register dependency on auth state
   depends('supabase:auth');
 
-  // Create a Supabase client in the browser
-  const supabase = isBrowser()
+  // Only create the browser client on the client side
+  const supabase = isBrowser() 
     ? createBrowserClient(
         PUBLIC_SUPABASE_URL,
         PUBLIC_SUPABASE_ANON_KEY,
         {
-          global: {
-            fetch
-          },
+          global: { fetch },
           cookies: {
             get(key) {
+              // This only runs in the browser now
               return document.cookie
                 .split('; ')
                 .find((row) => row.startsWith(`${key}=`))
                 ?.split('=')[1];
             },
             set(key, value, options) {
-              let cookie = `${key}=${value}`;
-              if (options?.expires) {
-                cookie += `; expires=${options.expires.toUTCString()}`;
-              }
-              if (options?.path) {
-                cookie += `; path=${options.path}`;
-              }
-              if (options?.domain) {
-                cookie += `; domain=${options.domain}`;
-              }
-              if (options?.sameSite) {
-                cookie += `; samesite=${options.sameSite}`;
-              }
-              if (options?.secure) {
-                cookie += '; secure';
-              }
-              document.cookie = cookie;
+              document.cookie = `${key}=${value}; path=${options?.path || '/'}`;
             },
             remove(key, options) {
               document.cookie = `${key}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=${options?.path || '/'}`;
@@ -47,10 +30,10 @@ export const load: LayoutLoad = async ({ data, depends, fetch }) => {
           }
         }
       )
-    : null;
+    : null; // Return null during SSR
 
   return {
     ...data,
-    supabase
+    supabase: supabase || data.supabase // Fall back to data.supabase if supabase is null
   };
-}
+};
