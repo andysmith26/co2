@@ -194,9 +194,11 @@
 	}
 
 	// Run once when component mounts
-	$: if (session?.user) {
-		loadProfile();
-	}
+	$effect(() => {
+		if (session?.user) {
+			loadProfile();
+		}
+	});
 </script>
 
 <svelte:head>
