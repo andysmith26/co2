@@ -13,10 +13,23 @@ export async function GET({ locals }) {
     
     console.log('Admin status confirmed, fetching stats...');
     
+    // First, let's check if we can query the table at all
+    const { count: totalCount, error: countError } = await supabaseAdmin
+      .from('students')
+      .select('*', { count: 'exact', head: true });
+    
+    console.log('Total count query result:', { totalCount, countError });
+    
     // Get stats across all teachers
     const { data, error } = await supabaseAdmin
       .from('students')
       .select('teacher_id, status');
+      
+    console.log('Stats query result:', { 
+      dataLength: data?.length, 
+      error: error?.message,
+      firstFewRecords: data?.slice(0, 3) 
+    });
       
     if (error) {
       console.error('Error fetching student data:', error);
@@ -84,12 +97,16 @@ export async function GET({ locals }) {
       console.warn('Error looking up teacher emails:', emailLookupError);
     }
     
-    return json({
+    const result = {
       totalStudents: data.length,
       teacherCounts,
       teacherEmails,
       statusCounts
-    });
+    };
+    
+    console.log('Final stats result:', result);
+    
+    return json(result);
   } catch (err) {
     console.error('Error fetching admin stats:', err);
     return json({ 
