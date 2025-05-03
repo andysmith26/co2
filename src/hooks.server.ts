@@ -32,17 +32,19 @@ const supabaseHandler: Handle = async ({ event, resolve }) => {
 
   // Add getSession helper for secure session validation
   event.locals.getSession = async () => {
+    // First get session from cookie
     const { data: { session } } = await event.locals.supabase.auth.getSession();
     
     if (!session) {
       return { session: null, user: null };
     }
     
-    // Validate the JWT by getting the user - recommended by Supabase
+    // Then verify the JWT by getting the user - recommended by Supabase
     const { data: { user }, error } = await event.locals.supabase.auth.getUser();
     
     if (error) {
       // JWT validation failed
+      console.warn('JWT validation failed:', error.message);
       return { session: null, user: null };
     }
     
@@ -58,10 +60,10 @@ const supabaseHandler: Handle = async ({ event, resolve }) => {
 
 const authGuard: Handle = async ({ event, resolve }) => {
     // Get the validated session
-    const { session } = await event.locals.getSession();
+    const { session, user } = await event.locals.getSession();
     
     // Identify protected routes by their actual URL paths
-    const protectedPaths = ['/dashboard', '/profile', '/signout'];
+    const protectedPaths = ['/dashboard', '/profile', '/signout', '/admin'];
     const isProtectedRoute = protectedPaths.some(path => 
       event.url.pathname === path || event.url.pathname.startsWith(`${path}/`)
     );

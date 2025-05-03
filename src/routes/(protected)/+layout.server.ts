@@ -3,15 +3,25 @@ import { redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
 
 export const load: LayoutServerLoad = async ({ locals, url }) => {
-  // Get validated session
-  const { session, user } = await locals.getSession();
-  
-  // If there's no session, redirect to login with return URL
-  if (!session) {
-    // This is a backup check in case the hooks guard somehow didn't catch it
-    throw redirect(303, `/login?redirectTo=${encodeURIComponent(url.pathname)}`);
+  try {
+    // Get authenticated user with the secure method
+    const { data: { user }, error: userError } = await locals.supabase.auth.getUser();
+    
+    if (userError || !user) {
+      // User is not authenticated or token is invalid
+      throw redirect(303, `/login?redirectTo=${encodeURIComponent(url.pathname)}`);
+    }
+    
+    // Now get the session (which we know exists since user is authenticated)
+    const { data: { session } } = await locals.supabase.auth.getSession();
+    
+    // Return both for use in the layout
+    return { session, user };
+  } catch (err) {
+    // If err is not a redirect, it's an unexpected error
+    if (!(err instanceof Response)) {
+      console.error('Error in protected layout:', err);
+    }
+    throw err;
   }
-  
-  // Return session and user for use in the layout
-  return { session, user };
 };
