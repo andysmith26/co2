@@ -125,6 +125,10 @@
 </style>
 
 <script>
+	import FeatureWrapper from '$lib/FeatureWrapper.svelte';
+	import { FEATURES, isFeatureEnabled } from '$lib/constants/features';
+
+	// Original dashboard code remains available when no features are enabled
 	// Sample learning paths (will come from API/store in the future)
 	const learningPaths = [
 		{
@@ -164,48 +168,54 @@
 	<title>Dashboard | LearningWhatever</title>
 </svelte:head>
 
-<div class="dashboard">
-	<section class="welcome-section">
-		<h1>Welcome to LearningWhatever</h1>
-	</section>
+{#if isFeatureEnabled('CONCEPT_MAPPING') || isFeatureEnabled('PROJECT_TRACKING')}
+	<!-- Render feature wrapper when any feature is enabled -->
+	<FeatureWrapper />
+{:else}
+	<!-- Original dashboard as fallback -->
+	<div class="dashboard">
+		<section class="welcome-section">
+			<h1>Welcome to LearningWhatever</h1>
+		</section>
 
-	<section class="learning-paths">
-		<h2>Your Learning Paths</h2>
-		<div class="path-cards">
-			{#each learningPaths as path}
-				<div class="path-card">
-					<h3>{path.title}</h3>
-					<p>{path.description}</p>
-					<div class="progress-container">
-						<div class="progress-bar" style="width: {path.progress}%"></div>
+		<section class="learning-paths">
+			<h2>Your Learning Paths</h2>
+			<div class="path-cards">
+				{#each learningPaths as path}
+					<div class="path-card">
+						<h3>{path.title}</h3>
+						<p>{path.description}</p>
+						<div class="progress-container">
+							<div class="progress-bar" style="width: {path.progress}%"></div>
+						</div>
+						<div class="progress-info">
+							<span>{path.progress}% complete</span>
+							<span>{path.modules} modules</span>
+						</div>
+						<a href={`/learn/${path.id}`} class="continue-btn">Continue Learning</a>
 					</div>
-					<div class="progress-info">
-						<span>{path.progress}% complete</span>
-						<span>{path.modules} modules</span>
-					</div>
-					<a href={`/learn/${path.id}`} class="continue-btn">Continue Learning</a>
+				{/each}
+				<div class="path-card add-path">
+					<div class="add-icon">+</div>
+					<p>Discover new learning paths</p>
+					<a href="/explore" class="discover-btn">Explore</a>
 				</div>
-			{/each}
-			<div class="path-card add-path">
-				<div class="add-icon">+</div>
-				<p>Discover new learning paths</p>
-				<a href="/explore" class="discover-btn">Explore</a>
 			</div>
-		</div>
-	</section>
+		</section>
 
-	<section class="recommendations">
-		<h2>Recommended for You</h2>
-		<div class="video-grid">
-			{#each recommendedVideos as video}
-				<a href={`/learn/video/${video.id}`} class="video-card">
-					<div class="thumbnail">
-						<img src={video.thumbnail} alt={video.title} />
-						<span class="duration">{video.duration}</span>
-					</div>
-					<h3>{video.title}</h3>
-				</a>
-			{/each}
-		</div>
-	</section>
-</div>
+		<section class="recommendations">
+			<h2>Recommended for You</h2>
+			<div class="video-grid">
+				{#each recommendedVideos as video}
+					<a href={`/learn/video/${video.id}`} class="video-card">
+						<div class="thumbnail">
+							<img src={video.thumbnail} alt={video.title} />
+							<span class="duration">{video.duration}</span>
+						</div>
+						<h3>{video.title}</h3>
+					</a>
+				{/each}
+			</div>
+		</section>
+	</div>
+{/if}

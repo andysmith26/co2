@@ -1,5 +1,5 @@
 // Import constants to use in type definitions
-import { TASK_STATUS, STUDENT_STATUS, DIFFICULTY_LEVELS, TASK_CATEGORIES, VIEW_MODES } from '../constants';
+import { TASK_STATUS, STUDENT_STATUS, DIFFICULTY_LEVELS, TASK_CATEGORIES, VIEW_MODES, GROUP_MEMBER_ROLES } from '../constants';
 
 // Student type definition
 export interface Student {
@@ -7,6 +7,35 @@ export interface Student {
   name: string;
   status: typeof STUDENT_STATUS[keyof typeof STUDENT_STATUS];
   currentTask: number | null;
+}
+
+// Group type definition
+export interface Group {
+  id: string;
+  name: string;
+  description?: string | null;
+  created_at: string;
+  created_by: string | null;
+}
+
+// GroupMember type definition
+export interface GroupMember {
+  id: string;
+  group_id: string;
+  user_id: string;
+  role: typeof GROUP_MEMBER_ROLES[keyof typeof GROUP_MEMBER_ROLES];
+  created_at: string;
+  // These fields may come from joins with the users/students table
+  first_name?: string;
+  last_initial?: string;
+}
+
+// Teacher type definition
+export interface Teacher {
+  id: string;
+  email: string;
+  first_name?: string;
+  last_name?: string;
 }
 
 // Task type definition

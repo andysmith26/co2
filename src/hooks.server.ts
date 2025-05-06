@@ -63,14 +63,21 @@ const authGuard: Handle = async ({ event, resolve }) => {
     const { session, user } = await event.locals.getSession();
     
     // Identify protected routes by their actual URL paths
-    const protectedPaths = ['/dashboard', '/profile', '/signout', '/admin'];
+    const protectedPaths = ['/dashboard', '/profile', '/signout', '/admin', '/groups'];
+    // Also protect API routes
+    const isApiRoute = event.url.pathname.startsWith('/api/');
     const isProtectedRoute = protectedPaths.some(path => 
       event.url.pathname === path || event.url.pathname.startsWith(`${path}/`)
     );
     
-    // If trying to access protected route without session, redirect to login
-    if (isProtectedRoute && !session) {
-      // Encode the current URL to redirect back after login
+    // If trying to access protected route or API without session, redirect to login or return 401
+    if ((isProtectedRoute || isApiRoute) && !session) {
+      // For API routes, just let it through - the API endpoints will handle auth checks
+      if (isApiRoute) {
+        return resolve(event);
+      }
+      
+      // For UI routes, redirect to login
       const redirectTo = encodeURIComponent(event.url.pathname);
       throw redirect(303, `/login?redirectTo=${redirectTo}`);
     }

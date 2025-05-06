@@ -35,3 +35,9 @@ export const TASK_STATUS = {
     STUDENTS: 'students',
     TASKS: 'tasks'
   } as const;
+
+  // Group member roles
+  export const GROUP_MEMBER_ROLES = {
+    STUDENT: 'student',
+    TEACHER: 'teacher'
+  } as const;

@@ -2,7 +2,7 @@
 import { json } from '@sveltejs/kit';
 import { supabase } from '$lib/supabase';
 
-export async function GET({ locals, request }) {
+export async function GET({ locals, request, url }) {
   try {
     // Get session
     const session = await locals.getSession();
@@ -15,11 +15,21 @@ export async function GET({ locals, request }) {
       return json({ error: 'Unauthorized' }, { status: 401 });
     }
     
+    // Check if there's a search parameter
+    const searchQuery = url.searchParams.get('search');
+    
     // For authenticated requests, use the server's Supabase client which has the session
-    const { data, error } = await locals.supabase
+    let query = locals.supabase
       .from('students')
-      .select('*')
+      .select('id, first_name, last_initial, teacher_id, status')
       .order('first_name');
+    
+    // Apply search filter if provided
+    if (searchQuery) {
+      query = query.ilike('first_name', `%${searchQuery}%`);
+    }
+    
+    const { data, error } = await query;
       
     if (error) throw error;
     
