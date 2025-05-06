@@ -243,21 +243,24 @@
 	}
 </style>
 
-<!-- 
-  PARKED FEATURE: Concept Mapping Visualization
-  
-  This is the main App component for the concept mapping feature that is currently
-  on hold. It will be integrated in a future phase of development.
-  
-  Last updated: May 6, 2025
--->
 <script>
+	import { isFeatureEnabled } from '$lib/constants';
 	import { onMount } from 'svelte';
-	import EnhancedConstellationGraph from './components/EnhancedConstellationGraph.svelte';
-	import ConceptDetail from './components/ConceptDetail.svelte';
-	import ConnectionCreator from './components/ConnectionCreator.svelte';
-	import { conceptNodes, starterConnections, nodeTypes } from './data/enhanced-concepts';
 	import { writable } from 'svelte/store';
+
+	// Route-adjacent components
+	import ConceptDetail from './ConceptDetail.svelte';
+	import ConnectionCreator from './ConnectionCreator.svelte';
+	import EnhancedConstellationGraph from './EnhancedConstellationGraph.svelte';
+	import { conceptNodes, starterConnections, nodeTypes } from './data/concepts';
+
+	// Only render the concept map if the feature is enabled
+	const showConceptMapping = isFeatureEnabled('CONCEPT_MAPPING');
+
+	// If feature is disabled, redirect to homepage
+	if (!showConceptMapping) {
+		// We'll redirect server-side in the load function
+	}
 
 	// Reactive stores
 	const conceptsStore = writable(conceptNodes);
@@ -364,6 +367,10 @@
 		return connected;
 	}
 </script>
+
+<svelte:head>
+	<title>AP CSP Concept Mapping | CO2</title>
+</svelte:head>
 
 <main>
 	<header>

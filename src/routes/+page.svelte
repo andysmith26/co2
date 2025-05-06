@@ -3,6 +3,7 @@
 		display: flex;
 		flex-direction: column;
 		gap: 2rem;
+		padding: 0 1rem 2rem;
 	}
 
 	.welcome-section {
@@ -15,6 +16,72 @@
 	h2,
 	h3 {
 		margin-top: 0;
+	}
+
+	.feature-announcement {
+		margin-top: 1rem;
+		padding: 1rem;
+		background-color: #fff;
+		border-radius: 0.5rem;
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+		border-left: 4px solid #3498db;
+	}
+
+	.feature-cta {
+		display: inline-block;
+		margin-top: 0.5rem;
+		padding: 0.5rem 1rem;
+		background-color: #3498db;
+		color: white;
+		text-decoration: none;
+		border-radius: 4px;
+		font-weight: bold;
+	}
+
+	.feature-navigation {
+		margin-top: 1rem;
+	}
+
+	.feature-cards {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+		gap: 1rem;
+		margin-top: 1rem;
+	}
+
+	.feature-card {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		text-align: center;
+		padding: 1.5rem;
+		background-color: white;
+		border-radius: 0.5rem;
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+		text-decoration: none;
+		color: inherit;
+		transition:
+			transform 0.2s,
+			box-shadow 0.2s;
+	}
+
+	.feature-card:hover {
+		transform: translateY(-5px);
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+	}
+
+	.feature-icon {
+		font-size: 2.5rem;
+		margin-bottom: 1rem;
+	}
+
+	.feature-card h3 {
+		margin-bottom: 0.5rem;
+	}
+
+	.feature-card p {
+		color: #666;
+		margin: 0;
 	}
 
 	.path-cards {
@@ -125,11 +192,10 @@
 </style>
 
 <script>
-	import FeatureWrapper from '$lib/FeatureWrapper.svelte';
-	import { FEATURES, isFeatureEnabled } from '$lib/constants/features';
+	import { FEATURES, isFeatureEnabled } from '$lib/constants';
+	import { redirect } from '@sveltejs/kit';
 
-	// Original dashboard code remains available when no features are enabled
-	// Sample learning paths (will come from API/store in the future)
+	// Original dashboard data
 	const learningPaths = [
 		{
 			id: 'web-dev',
@@ -147,7 +213,6 @@
 		},
 	];
 
-	// Sample recommended videos (will connect to your videoData store later)
 	const recommendedVideos = [
 		{
 			id: 'vid-1',
@@ -162,60 +227,95 @@
 			duration: '12:45',
 		},
 	];
+
+	// Check if features are enabled
+	const showProjectTracking = isFeatureEnabled('PROJECT_TRACKING');
 </script>
 
 <svelte:head>
 	<title>Dashboard | LearningWhatever</title>
 </svelte:head>
 
-{#if isFeatureEnabled('CONCEPT_MAPPING') || isFeatureEnabled('PROJECT_TRACKING')}
-	<!-- Render feature wrapper when any feature is enabled -->
-	<FeatureWrapper />
-{:else}
-	<!-- Original dashboard as fallback -->
-	<div class="dashboard">
-		<section class="welcome-section">
-			<h1>Welcome to LearningWhatever</h1>
-		</section>
+<div class="dashboard">
+	<section class="welcome-section">
+		<h1>Welcome to LearningWhatever</h1>
 
-		<section class="learning-paths">
-			<h2>Your Learning Paths</h2>
-			<div class="path-cards">
-				{#each learningPaths as path}
-					<div class="path-card">
-						<h3>{path.title}</h3>
-						<p>{path.description}</p>
-						<div class="progress-container">
-							<div class="progress-bar" style="width: {path.progress}%"></div>
-						</div>
-						<div class="progress-info">
-							<span>{path.progress}% complete</span>
-							<span>{path.modules} modules</span>
-						</div>
-						<a href={`/learn/${path.id}`} class="continue-btn">Continue Learning</a>
+		{#if showProjectTracking}
+			<div class="feature-announcement">
+				<h2>🚀 Project Tracking Now Available!</h2>
+				<p>
+					Our new project tracking system helps you monitor progress and collaborate with your team.
+				</p>
+				<a href="/projects" class="feature-cta">Try Project Tracking</a>
+			</div>
+		{/if}
+	</section>
+
+	<!-- Feature Navigation -->
+	<section class="feature-navigation">
+		<h2>Tools & Features</h2>
+		<div class="feature-cards">
+			{#if isFeatureEnabled('CONCEPT_MAPPING')}
+				<a href="/concept-map" class="feature-card">
+					<div class="feature-icon">🔄</div>
+					<h3>Concept Mapping</h3>
+					<p>Visualize and connect complex concepts</p>
+				</a>
+			{/if}
+
+			{#if showProjectTracking}
+				<a href="/projects" class="feature-card">
+					<div class="feature-icon">📊</div>
+					<h3>Project Tracking</h3>
+					<p>Monitor progress and collaborate with your team</p>
+				</a>
+			{/if}
+
+			<a href="/learn" class="feature-card">
+				<div class="feature-icon">📚</div>
+				<h3>Learning Paths</h3>
+				<p>Structured courses for your educational journey</p>
+			</a>
+		</div>
+	</section>
+
+	<section class="learning-paths">
+		<h2>Your Learning Paths</h2>
+		<div class="path-cards">
+			{#each learningPaths as path}
+				<div class="path-card">
+					<h3>{path.title}</h3>
+					<p>{path.description}</p>
+					<div class="progress-container">
+						<div class="progress-bar" style="width: {path.progress}%"></div>
 					</div>
-				{/each}
-				<div class="path-card add-path">
-					<div class="add-icon">+</div>
-					<p>Discover new learning paths</p>
-					<a href="/explore" class="discover-btn">Explore</a>
+					<div class="progress-info">
+						<span>{path.progress}% complete</span>
+						<span>{path.modules} modules</span>
+					</div>
+					<a href={`/learn/${path.id}`} class="continue-btn">Continue Learning</a>
 				</div>
+			{/each}
+			<div class="path-card add-path">
+				<div class="add-icon">+</div>
+				<p>Discover new learning paths</p>
+				<a href="/explore" class="discover-btn">Explore</a>
 			</div>
-		</section>
+		</div>
+	</section>
 
-		<section class="recommendations">
-			<h2>Recommended for You</h2>
-			<div class="video-grid">
-				{#each recommendedVideos as video}
-					<a href={`/learn/video/${video.id}`} class="video-card">
-						<div class="thumbnail">
-							<img src={video.thumbnail} alt={video.title} />
-							<span class="duration">{video.duration}</span>
-						</div>
-						<h3>{video.title}</h3>
-					</a>
-				{/each}
-			</div>
-		</section>
-	</div>
-{/if}
+	<section class="recommendations">
+		<h2>Recommended for You</h2>
+		<div class="video-grid">
+			{#each recommendedVideos as video}
+				<a href={`/learn/video/${video.id}`} class="video-card">
+					<div class="thumbnail">
+						<img src={video.thumbnail} alt={video.title} />
+						<span class="duration">{video.duration}</span>
+					</div>
+					<h3>{video.title}</h3>
+				</a>
+			{/each}
+		</div>
+	</section>
+</div>

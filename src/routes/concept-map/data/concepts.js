@@ -1,13 +1,6 @@
 /**
- * PARKED FEATURE: Concept Mapping Visualization
- *
- * This file contains data for the concept mapping visualization feature that is currently
- * on hold. It will be integrated in a future phase of development.
- *
- * Last updated: May 6, 2025
+ * Concept data for AP CSP Big Idea 4: Computing Systems and Networks
  */
-
-// Enhanced concept map data for Big Idea 4: Computing Systems and Networks
 
 export const conceptNodes = [
 	// Learning Objectives
@@ -19,7 +12,15 @@ export const conceptNodes = [
 		type: 'learning-objective',
 		importance: 5,
 	},
-	// ...existing code...
+	{
+		id: 'CSN-1.B',
+		label: 'Internet Operation',
+		description: 'How the Internet works',
+		bigIdea: 4,
+		type: 'learning-objective',
+		importance: 5,
+	},
+	// ...more concept nodes...
 ];
 
 // Initial starter connections between concepts
@@ -33,7 +34,15 @@ export const starterConnections = [
 		description: 'LO includes this concept',
 		userCreated: false,
 	},
-	// ...existing code...
+	{
+		id: 'c2',
+		source: 'CSN-1.A',
+		target: 'computing-system',
+		type: 'hierarchical',
+		description: 'LO includes this concept',
+		userCreated: false,
+	},
+	// ...more connections...
 ];
 
 // Connection types and their descriptions
@@ -43,7 +52,12 @@ export const connectionTypes = [
 		label: 'Hierarchical',
 		description: 'One concept is a type/part of another concept',
 	},
-	// ...existing code...
+	{
+		id: 'sequential',
+		label: 'Sequential',
+		description: 'One concept happens before another concept',
+	},
+	// ...more connection types...
 ];
 
 // Type definitions for coloring/styling
@@ -54,5 +68,11 @@ export const nodeTypes = [
 		color: '#3498db', // Blue
 		size: 24,
 	},
-	// ...existing code...
+	{
+		id: 'vocabulary',
+		label: 'Vocabulary',
+		color: '#e74c3c', // Red
+		size: 18,
+	},
+	// ...more node types...
 ];
