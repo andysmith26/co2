@@ -48,6 +48,7 @@
 </style>
 
 <script lang="ts">
+	import '../app.css'; // Import the global CSS file with Tailwind
 	import { invalidate } from '$app/navigation';
 	import { onMount } from 'svelte';
 
