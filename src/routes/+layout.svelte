@@ -48,16 +48,12 @@
 </style>
 
 <script lang="ts">
-	import '../app.css'; // Import the global CSS file with Tailwind
+	import '../app.css';
 	import { invalidate } from '$app/navigation';
 	import { onMount } from 'svelte';
 
-	// Use $props rune for component props
 	let { data } = $props();
-	// Use $derived for computed values
 	let { supabase, session, user } = $derived(data);
-
-	// Check if user is admin
 	let isAdmin = $state(false);
 
 	async function checkAdminStatus() {
@@ -65,10 +61,10 @@
 
 		try {
 			console.log('Checking admin status for user:', user?.email);
+
 			const response = await fetch('/api/test-admin');
 			const data = await response.json();
 
-			// Log the response for debugging
 			console.log('Admin status check response:', data);
 
 			if (data.success === false) {
@@ -85,7 +81,6 @@
 	}
 
 	onMount(() => {
-		// Set up auth state change listener
 		const {
 			data: { subscription },
 		} = supabase.auth.onAuthStateChange((event, newSession) => {
@@ -95,20 +90,16 @@
 		});
 
 		if (session) {
-			// Small delay to ensure session is fully loaded
 			setTimeout(checkAdminStatus, 100);
 		}
 
-		// Clean up on unmount
 		return () => {
 			subscription.unsubscribe();
 		};
 	});
 
-	// Watch for session changes to recheck admin status
 	$effect(() => {
 		if (session) {
-			// Small delay to ensure session is fully loaded
 			setTimeout(checkAdminStatus, 100);
 		} else {
 			isAdmin = false;

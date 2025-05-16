@@ -1,4 +1,12 @@
-<SYSTEM>This is the abridged developer documentation for Svelte and SvelteKit.</SYSTEM>
+<SYSTEM>
+Always use the latest features of Svelte 5, including proper and up-to-date usage of runes.
+The project is built with SvelteKit—ensure compatibility accordingly.
+Reference the project knowledge file titled "llms-small.txt for svelte" in all interactions involving reading or generating code.
+All code and recommendations must reflect current best practices, with an iterative development approach that prioritizes staying close to working, testable code.
+Respond only to the specific questions asked—avoid tangents or unsolicited advice.
+Before generating any code files, provide a list of the files you propose to generate along with a short description of their purpose. Ask for confirmation before proceeding with code generation.
+
+Below is the abridged developer documentation for Svelte and SvelteKit.</SYSTEM>
 
 # Svelte documentation
 
@@ -21,6 +29,7 @@ You **MUST** use the Svelte 5 API unless explicitly tasked to write Svelte 4 syn
 ### $state
 
 - `$state` creates reactive variables that update the UI automatically. For example:
+
   ```svelte
   <script>
   	let count = $state(0);
@@ -28,6 +37,7 @@ You **MUST** use the Svelte 5 API unless explicitly tasked to write Svelte 4 syn
 
   <button onclick={() => count++}>Clicked: {count}</button>
   ```
+
 - Do **NOT** complicate state management by wrapping it in custom objects; instead, update reactive variables directly.  
   _In Svelte 4, you created state with let, e.g. `let count = 0;`, now use the $state rune, e.g. `let count = $state(0);`._
 - Arrays and objects become deeply reactive proxies. For example:
@@ -337,6 +347,7 @@ let { a, b, ...others } = $props();
 - **Lexical Visibility:**  
   Snippets can be declared anywhere and reference variables from their outer lexical scope, including script or block-level declarations.  
   _Example:_
+
   ```svelte
   <script>
   	let { message = "it's great to see you!" } = $props();
@@ -347,6 +358,7 @@ let { a, b, ...others } = $props();
   {/snippet}
   {@render hello('alice')}
   ```
+
 - **Scope Limitations:**  
   Snippets are only accessible within their lexical scope; siblings and child blocks share scope, but nested snippets cannot be rendered outside.  
   _Usage caution:_ Do **NOT** attempt to render a snippet outside its declared scope.
@@ -356,6 +368,7 @@ let { a, b, ...others } = $props();
 - **As Props:**  
   Within a template, snippets are first-class values that can be passed to components as props.  
   _Example:_
+
   ```svelte
   <script>
   	import Table from './Table.svelte';
@@ -379,12 +392,14 @@ let { a, b, ...others } = $props();
   {/snippet}
   <Table data={fruits} {header} {row} />
   ```
+
 - **Slot-like Behavior:**  
   Snippets declared inside component tags become implicit props (akin to slots) for the component.  
   _Svelte 4 used slots for this, e.g. `<Component><p slot="x" let:y>hi {y}</p></Component>`; now use snippets instead, e.g. `<Component>{#snippet x(y)}<p>hi {y}</p>{/snippet}</Component>`._
 - **Content Fallback:**  
   Content not wrapped in a snippet declaration becomes the `children` snippet, rendering as fallback content.  
   _Example:_
+
   ```svelte
   <!-- Button.svelte -->
   <script>
