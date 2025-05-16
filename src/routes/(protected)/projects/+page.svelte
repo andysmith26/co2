@@ -13,18 +13,18 @@
 		},
 		{
 			id: '3',
-			title: 'Community Emission Reduction',
-			task: { title: 'Identify community stakeholders', assignee: 'campma' },
+			title: 'Robot Code Demos',
+			task: { title: 'code another routine', assignee: 'campma' },
 		},
 		{
 			id: '4',
-			title: 'Solar Panel Installation',
-			task: { title: 'Site assessment', assignee: 'chachu' },
+			title: 'Bot H2',
+			task: { title: 'finish chassis', assignee: 'chachu' },
 		},
 		{
 			id: '5',
-			title: 'Green Transportation Initiative',
-			task: { title: 'Research EV charging stations', assignee: 'charsa' },
+			title: 'Field Controller',
+			task: { title: 'get set up in mcpi', assignee: 'charsa' },
 		},
 		{
 			id: '6',
