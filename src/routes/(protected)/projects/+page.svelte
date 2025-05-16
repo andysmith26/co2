@@ -23,7 +23,7 @@
 		},
 		{
 			id: '5',
-			title: 'Field Controller',
+			title: 'Minecraft Buttons?',
 			task: { title: 'get set up in mcpi', assignee: 'charsa' },
 		},
 		{
@@ -63,7 +63,7 @@
 		},
 		{
 			id: '13',
-			title: '...',
+			title: 'Coding?',
 			task: { title: ' ', assignee: 'murpke' },
 		},
 		{
