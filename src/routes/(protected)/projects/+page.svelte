@@ -3,123 +3,78 @@
 	const projects = $state([
 		{
 			id: '1',
-			title: 'Carbon Capture Research',
-			task: { title: 'Analyze cost effectiveness data', assignee: 'John Smith' },
+			title: 'Field Controller',
+			task: { title: 'capture minecraft coords and link up more buttons', assignee: 'albeno' },
 		},
 		{
 			id: '2',
 			title: 'Classroom CO2 Monitors',
-			task: { title: 'Test monitor accuracy', assignee: 'Michael Chen' },
+			task: { title: 'Test monitor accuracy', assignee: 'alfafa' },
 		},
 		{
 			id: '3',
 			title: 'Community Emission Reduction',
-			task: { title: 'Identify community stakeholders', assignee: 'David Parker' },
+			task: { title: 'Identify community stakeholders', assignee: 'campma' },
 		},
 		{
 			id: '4',
 			title: 'Solar Panel Installation',
-			task: { title: 'Site assessment', assignee: 'Emma Lee' },
+			task: { title: 'Site assessment', assignee: 'chachu' },
 		},
 		{
 			id: '5',
 			title: 'Green Transportation Initiative',
-			task: { title: 'Research EV charging stations', assignee: 'Tyler Johnson' },
+			task: { title: 'Research EV charging stations', assignee: 'charsa' },
 		},
 		{
 			id: '6',
 			title: 'Waste Reduction Program',
-			task: { title: 'Develop sorting guidelines', assignee: 'Samantha Lopez' },
+			task: { title: 'Develop sorting guidelines', assignee: 'drebvi' },
 		},
 		{
 			id: '7',
 			title: 'Energy Efficiency Audit',
-			task: { title: 'Collect baseline measurements', assignee: 'Alex Wilson' },
+			task: { title: 'Collect baseline measurements', assignee: 'fielmo' },
 		},
 		{
 			id: '8',
 			title: 'Water Conservation Project',
-			task: { title: 'Identify high usage areas', assignee: 'Jamal Brown' },
+			task: { title: 'Identify high usage areas', assignee: 'hauzch' },
 		},
 		{
 			id: '9',
 			title: 'Tree Planting Initiative',
-			task: { title: 'Secure planting sites', assignee: 'Maria Garcia' },
+			task: { title: 'Secure planting sites', assignee: 'helmow' },
 		},
 		{
 			id: '10',
 			title: 'Carbon Footprint Calculator',
-			task: { title: 'Develop user interface', assignee: 'Chris Taylor' },
+			task: { title: 'Develop user interface', assignee: 'lapeha' },
 		},
 		{
 			id: '11',
 			title: 'Sustainable Food Program',
-			task: { title: 'Contact local farmers', assignee: 'Leila Ahmed' },
+			task: { title: 'Contact local farmers', assignee: 'mcfaas' },
 		},
 		{
 			id: '12',
 			title: 'Climate Education Workshop',
-			task: { title: 'Create presentation materials', assignee: 'Daniel Kim' },
+			task: { title: 'Create presentation materials', assignee: 'mcmity' },
 		},
 		{
 			id: '13',
 			title: 'Renewable Energy Integration',
-			task: { title: 'Assess grid capacity', assignee: 'Sanjay Patel' },
+			task: { title: 'Assess grid capacity', assignee: 'murpke' },
 		},
 		{
 			id: '14',
 			title: 'Zero Waste Campus Initiative',
-			task: { title: 'Conduct waste audit', assignee: 'Rachel Green' },
+			task: { title: 'Conduct waste audit', assignee: 'stephu' },
 		},
 		{
 			id: '15',
 			title: 'Electric Vehicle Incentives',
 			task: { title: 'Research tax benefits', assignee: 'Marcus Johnson' },
-		},
-		{
-			id: '16',
-			title: 'Sustainable Construction',
-			task: { title: 'Evaluate green materials', assignee: 'Ava Richardson' },
-		},
-		{
-			id: '17',
-			title: 'Community Garden Project',
-			task: { title: 'Identify potential locations', assignee: 'Priya Sharma' },
-		},
-		{
-			id: '18',
-			title: 'Low Carbon Diet Program',
-			task: { title: 'Calculate food carbon footprint', assignee: 'Thomas Wright' },
-		},
-		{
-			id: '19',
-			title: 'Bike Sharing Program',
-			task: { title: 'Map station locations', assignee: 'Lin Zhang' },
-		},
-		{
-			id: '20',
-			title: 'Climate Resilience Planning',
-			task: { title: 'Identify vulnerable areas', assignee: 'Elena Rodriguez' },
-		},
-		{
-			id: '21',
-			title: 'Green Roof Installation',
-			task: { title: 'Assess structural requirements', assignee: 'Omar Hassan' },
-		},
-		{
-			id: '22',
-			title: 'Water Reclamation System',
-			task: { title: 'Calculate potential savings', assignee: 'Naomi Campbell' },
-		},
-		{
-			id: '23',
-			title: 'Native Species Restoration',
-			task: { title: 'Catalog indigenous plants', assignee: 'Kenji Tanaka' },
-		},
-		{
-			id: '24',
-			title: 'Smart Building Technology',
-			task: { title: 'Evaluate energy management systems', assignee: 'Sophie Martin' },
 		},
 	]);
 
