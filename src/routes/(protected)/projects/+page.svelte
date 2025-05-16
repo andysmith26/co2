@@ -8,8 +8,8 @@
 		},
 		{
 			id: '2',
-			title: 'Classroom CO2 Monitors',
-			task: { title: 'Test monitor accuracy', assignee: 'alfafa' },
+			title: 'Revive Old Monitor',
+			task: { title: 'find pin mapping', assignee: 'alfafa' },
 		},
 		{
 			id: '3',
