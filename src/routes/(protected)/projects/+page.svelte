@@ -76,6 +76,36 @@
 			title: 'Self-Balancing Robot',
 			task: { title: 'test new motors', assignee: 'smith' },
 		},
+		{
+			id: '16',
+			title: 'Tariff Game',
+			task: { title: 'add images', assignee: 'montle' },
+		},
+		{
+			id: '17',
+			title: 'Big Metal',
+			task: { title: 'collecting materials', assignee: 'enseca' },
+		},
+		{
+			id: '18',
+			title: 'Project Jeremy',
+			task: { title: 'code first action', assignee: 'harrsh' },
+		},
+		{
+			id: '19',
+			title: "Project Lil' Jeff",
+			task: { title: 'build chassis', assignee: 'johnos' },
+		},
+		{
+			id: '20',
+			title: 'Collaborator',
+			task: { title: 'harvest parts for Big Metal', assignee: 'moorti' },
+		},
+		{
+			id: '21',
+			title: 'Network',
+			task: { title: 'support robot coding', assignee: 'putnmo' },
+		},
 	]);
 
 	// Project filter
