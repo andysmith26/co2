@@ -74,8 +74,18 @@
 
 	async function handleAddMember(event) {
 		try {
-			const { userId, role } = event.detail;
-			await groupStore.addMemberToGroup(groupId, userId, role);
+			const { userId, studentId, role } = event.detail;
+			
+			if (role === GROUP_MEMBER_ROLES.STUDENT && studentId) {
+				// For students
+				await groupStore.addStudentToGroup(groupId, studentId, role);
+			} else if (userId) {
+				// For teachers
+				await groupStore.addTeacherToGroup(groupId, userId, role);
+			} else {
+				throw new Error('Either user ID or student ID is required');
+			}
+			
 			error = null;
 		} catch (err) {
 			if (err instanceof Error) {
@@ -86,7 +96,6 @@
 			console.error('Error adding member:', err);
 		}
 	}
-
 	async function handleRemoveMember(event) {
 		try {
 			const { memberId } = event.detail;
