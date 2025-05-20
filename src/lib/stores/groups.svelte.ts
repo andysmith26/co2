@@ -191,8 +191,7 @@ class GroupStore {
     }
   }
   
-  // src/lib/stores/groups.svelte.ts
-async addMemberToGroup(groupId: string, userId: string, role: string) {
+async addStudentToGroup(groupId: string, studentId: string, role: string) {
 	this.membersLoading = true;
 	this.error = null;
 	
@@ -201,14 +200,14 @@ async addMemberToGroup(groupId: string, userId: string, role: string) {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({
-				user_id: userId, // Explicitly map userId to user_id for the API
+				student_id: studentId, // Use student_id for students
 				role
 			})
 		});
 		
 		if (!response.ok) {
 			const errorData = await response.json();
-			throw new Error(errorData.error || 'Failed to add member to group');
+			throw new Error(errorData.error || 'Failed to add student to group');
 		}
 		
 		const newMember = await response.json();
@@ -221,14 +220,50 @@ async addMemberToGroup(groupId: string, userId: string, role: string) {
 		
 		return newMember;
 	} catch (err: any) {
-		console.error('Error adding member to group:', err);
+		console.error('Error adding student to group:', err);
 		this.error = err.message;
 		throw err;
 	} finally {
 		this.membersLoading = false;
 	}
 }
-  
+	async addTeacherToGroup(groupId: string, userId: string, role: string) {
+	this.membersLoading = true;
+	this.error = null;
+	
+	try {
+		const response = await fetch(`/api/groups/${groupId}/members`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				user_id: userId,
+				role
+			})
+		});
+		
+		if (!response.ok) {
+			const errorData = await response.json();
+			throw new Error(errorData.error || 'Failed to add teacher to group');
+		}
+		
+		const newMember = await response.json();
+		
+		// Update local state if currentGroupMembers is for this group
+		if (this.currentGroupMembers.length > 0 && 
+				this.currentGroupMembers[0].group_id === groupId) {
+			this.currentGroupMembers = [...this.currentGroupMembers, newMember];
+		}
+		
+		return newMember;
+	} catch (err: any) {
+		console.error('Error adding teacher to group:', err);
+		this.error = err.message;
+		throw err;
+	} finally {
+		this.membersLoading = false;
+	}
+}
+
   async removeMemberFromGroup(groupId: string, memberId: string) {
     this.membersLoading = true;
     this.error = null;
