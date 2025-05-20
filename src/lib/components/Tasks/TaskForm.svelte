@@ -143,3 +143,6 @@
 			>
 				{isSubmitting ? 'Adding...' : 'Add Task'}
 			</button>
+		</div>
+	</form>
+</div>
