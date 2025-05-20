@@ -15,19 +15,79 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
     const supabase = getSupabase(session.access_token);
     
-    // Get the tasks for this project
-    const { data, error } = await supabase
+    // First, get the tasks for this project
+    const { data: tasks, error: tasksError } = await supabase
       .from('project_tasks')
       .select('*')
       .eq('project_id', projectId)
       .order('created_at', { ascending: true });
       
-    if (error) {
-      console.error('Error fetching tasks:', error);
-      return json({ error: error.message }, { status: 500 });
+    if (tasksError) {
+      console.error('Error fetching tasks:', tasksError);
+      return json({ error: tasksError.message }, { status: 500 });
     }
     
-    return json(data || []);
+    // If there are no tasks, return an empty array
+    if (!tasks || tasks.length === 0) {
+      return json([]);
+    }
+
+    // Process each task to include assignee information
+    const tasksWithAssignees = await Promise.all(tasks.map(async (task) => {
+      // If there's no assignee_id, return the task as is
+      if (!task.assignee_id) {
+        return task;
+      }
+      
+      // First, try to find the assignee as a user (teacher)
+      const { data: teacher, error: teacherError } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, email')
+        .eq('id', task.assignee_id)
+        .single();
+      
+      if (!teacherError && teacher) {
+        // If found as a teacher, include teacher data
+        return {
+          ...task,
+          assignee: {
+            id: teacher.id,
+            first_name: teacher.first_name || 'Unknown',
+            last_name: teacher.last_name || '',
+            email: teacher.email,
+            role: 'teacher'
+          }
+        };
+      }
+      
+      // If not found as a teacher, try as a student
+      const { data: student, error: studentError } = await supabase
+        .from('students')
+        .select('id, first_name, last_initial, teacher_id')
+        .eq('id', task.assignee_id)
+        .single();
+      
+      if (!studentError && student) {
+        // If found as a student, include student data
+        return {
+          ...task,
+          assignee: {
+            id: student.id,
+            first_name: student.first_name || 'Unknown',
+            last_initial: student.last_initial || '',
+            teacher_id: student.teacher_id,
+            role: 'student'
+          }
+        };
+      }
+      
+      // If not found in either table, return task with original assignee_id
+      // but mark as not found to help with debugging
+      console.log(`Assignee not found for task ${task.id}, assignee_id: ${task.assignee_id}`);
+      return task;
+    }));
+    
+    return json(tasksWithAssignees);
   } catch (err) {
     console.error('Error processing request:', err);
     return json({ error: 'Server error' }, { status: 500 });
