@@ -2,7 +2,7 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import type { Task } from '../../types';
-	import { TASK_STATUS } from '../../constants';
+	import { TASK_STATUS, GROUP_MEMBER_ROLES } from '../../constants';
 
 	// Props
 	const {
@@ -13,29 +13,6 @@
 		loading?: boolean;
 	}>();
 
-	// logging
-$effect(() => {
-  if (tasks && tasks.length > 0) {
-    console.log(`TaskList: Received ${tasks.length} tasks`);
-    
-    // Create a summary of assignee information for all tasks
-    const assigneeSummary = tasks.map(task => ({
-      task_id: task.id,
-      title: task.title,
-      assignee_id: task.assignee_id,
-      has_assignee_object: !!task.assignee,
-      assignee_details: task.assignee
-    }));
-    
-    console.table(assigneeSummary);
-    
-    // Log unique assignee_ids to check for the issue where all tasks have the same assignee
-    const uniqueAssigneeIds = [...new Set(tasks.map(t => t.assignee_id))];
-    console.log(`TaskList: Number of unique assignee_ids: ${uniqueAssigneeIds.length}`);
-    console.log('TaskList: Unique assignee_ids:', uniqueAssigneeIds);
-  }
-});
-
 	// Events
 	const dispatch = createEventDispatcher();
 
@@ -43,6 +20,29 @@ $effect(() => {
 	let editingTaskId = $state<string | null>(null);
 	let editTitle = $state('');
 	let editStatus = $state('');
+
+	// Debug logging for tasks
+	$effect(() => {
+		if (tasks && tasks.length > 0) {
+			console.log(`TaskList: Received ${tasks.length} tasks`);
+			
+			// Create a summary of assignee information for all tasks
+			const assigneeSummary = tasks.map(task => ({
+				task_id: task.id,
+				title: task.title,
+				assignee_id: task.assignee_id,
+				has_assignee_object: !!task.assignee,
+				assignee_details: task.assignee
+			}));
+			
+			console.table(assigneeSummary);
+			
+			// Log unique assignee_ids to check for the issue
+			const uniqueAssigneeIds = [...new Set(tasks.map(t => t.assignee_id))];
+			console.log(`TaskList: Number of unique assignee_ids: ${uniqueAssigneeIds.length}`);
+			console.log('TaskList: Unique assignee_ids:', uniqueAssigneeIds);
+		}
+	});
 
 	// Handle status change
 	function handleStatusChange(task: Task, newStatus: string) {
@@ -101,6 +101,19 @@ $effect(() => {
 				return 'bg-green-100 text-green-800';
 			default:
 				return 'bg-gray-100 text-gray-800';
+		}
+	}
+
+	// Helper function to format assignee name
+	function formatAssigneeName(task: Task): string {
+		if (!task.assignee) {
+			return 'Unassigned';
+		}
+
+		if (task.assignee.role === GROUP_MEMBER_ROLES.TEACHER) {
+			return `${task.assignee.first_name} ${task.assignee.last_name || ''}`;
+		} else {
+			return `${task.assignee.first_name} ${task.assignee.last_initial || ''}`;
 		}
 	}
 </script>
@@ -188,11 +201,7 @@ $effect(() => {
 							</td>
 							<td class="px-6 py-4 whitespace-nowrap">
 								<div class="text-sm text-gray-900">
-									{#if task.assignee}
-										{task.assignee.first_name} {task.assignee.last_initial || ''}
-									{:else}
-										<span class="text-gray-400">Unassigned</span>
-									{/if}
+									{formatAssigneeName(task)}
 								</div>
 							</td>
 							<td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
