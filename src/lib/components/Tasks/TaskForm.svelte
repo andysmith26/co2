@@ -2,7 +2,7 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import type { Task } from '../../types';
-	import { TASK_STATUS } from '../../constants';
+	import { TASK_STATUS, GROUP_MEMBER_ROLES } from '../../constants';
 
 	// Props
 	const {
@@ -20,6 +20,14 @@
 	let status: string = $state(TASK_STATUS.TODO);
 	let error: string | null = $state(null);
 	let isSubmitting: boolean = $state(false);
+
+	// Debug log group members to ensure we have the correct data
+	$effect(() => {
+		if (groupMembers.length > 0) {
+			console.log('TaskForm: Group members available for assignment:', groupMembers.length);
+			console.log('TaskForm: Sample group member:', groupMembers[0]);
+		}
+	});
 
 	// Events
 	const dispatch = createEventDispatcher();
@@ -64,6 +72,20 @@
 		} finally {
 			isSubmitting = false;
 		}
+	}
+
+	// Helper function to format member display name
+	function formatMemberName(member: any): string {
+		if (member.role === GROUP_MEMBER_ROLES.STUDENT) {
+			return `${member.first_name} ${member.last_initial || ''} (Student)`;
+		} else {
+			return `${member.first_name} ${member.last_name || ''} (Teacher)`;
+		}
+	}
+
+	// Helper function to get member ID (either user_id or student_id)
+	function getMemberId(member: any): string {
+		return member.role === GROUP_MEMBER_ROLES.STUDENT ? member.student_id : member.user_id;
 	}
 </script>
 
@@ -114,8 +136,8 @@
 				>
 					<option value={null}>Unassigned</option>
 					{#each groupMembers as member}
-						<option value={member.user_id}>
-							{member.first_name} {member.last_initial || member.last_name || ''}
+						<option value={getMemberId(member)}>
+							{formatMemberName(member)}
 						</option>
 					{/each}
 				</select>
