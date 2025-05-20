@@ -142,8 +142,9 @@
 		error = null;
 
 		try {
-			await dispatch('addMember', {
-				userId, // This needs to match what the parent component expects
+			dispatch('addMember', {
+				groupId,
+				userId, // This matches what handleAddMember expects
 				role: selectedRole,
 			});
 
@@ -153,7 +154,9 @@
 			
 			// Refresh the student list if in "all" view
 			if (viewMode === 'all') {
-				loadAllStudents(currentPage);
+				setTimeout(() => {
+					loadAllStudents(currentPage);
+				}, 300); // Give time for the server to process the addition
 			}
 		} catch (err) {
 			console.error('Error adding member:', err);
