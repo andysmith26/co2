@@ -14,13 +14,28 @@
 	}>();
 
 	// logging
-	$effect(() => {
-	  if (tasks && tasks.length > 0) {
-	    console.log('TaskList: First task data:', tasks[0]);
-	    console.log('TaskList: First task assignee:', tasks[0].assignee);
-	    console.log('TaskList: First task assignee_id:', tasks[0].assignee_id);
-	  }
-	});
+$effect(() => {
+  if (tasks && tasks.length > 0) {
+    console.log(`TaskList: Received ${tasks.length} tasks`);
+    
+    // Create a summary of assignee information for all tasks
+    const assigneeSummary = tasks.map(task => ({
+      task_id: task.id,
+      title: task.title,
+      assignee_id: task.assignee_id,
+      has_assignee_object: !!task.assignee,
+      assignee_details: task.assignee
+    }));
+    
+    console.table(assigneeSummary);
+    
+    // Log unique assignee_ids to check for the issue where all tasks have the same assignee
+    const uniqueAssigneeIds = [...new Set(tasks.map(t => t.assignee_id))];
+    console.log(`TaskList: Number of unique assignee_ids: ${uniqueAssigneeIds.length}`);
+    console.log('TaskList: Unique assignee_ids:', uniqueAssigneeIds);
+  }
+});
+
 	// Events
 	const dispatch = createEventDispatcher();
 
