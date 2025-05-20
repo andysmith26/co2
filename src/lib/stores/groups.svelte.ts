@@ -191,42 +191,39 @@ class GroupStore {
     }
   }
   
-  async addMemberToGroup(groupId: string, userId: string, role: string) {
-    this.membersLoading = true;
-    this.error = null;
+  async addMemberToGroup(groupId: string, data: { user_id?: string, student_id?: string, role: string }) {
+  this.membersLoading = true;
+  this.error = null;
+  
+  try {
+    const response = await fetch(`/api/groups/${groupId}/members`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
     
-    try {
-      const response = await fetch(`/api/groups/${groupId}/members`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: userId,
-          role
-        })
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to add member to group');
-      }
-      
-      const newMember = await response.json();
-      
-      // Update local state if currentGroupMembers is for this group
-      if (this.currentGroupMembers.length > 0 && 
-          this.currentGroupMembers[0].group_id === groupId) {
-        this.currentGroupMembers = [...this.currentGroupMembers, newMember];
-      }
-      
-      return newMember;
-    } catch (err: any) {
-      console.error('Error adding member to group:', err);
-      this.error = err.message;
-      throw err;
-    } finally {
-      this.membersLoading = false;
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to add member to group');
     }
+    
+    const newMember = await response.json();
+    
+    // Update local state if currentGroupMembers is for this group
+    if (this.currentGroupMembers.length > 0 && 
+        this.currentGroupMembers[0].group_id === groupId) {
+      this.currentGroupMembers = [...this.currentGroupMembers, newMember];
+    }
+    
+    return newMember;
+  } catch (err: any) {
+    console.error('Error adding member to group:', err);
+    this.error = err.message;
+    throw err;
+  } finally {
+    this.membersLoading = false;
   }
+}
   
   async removeMemberFromGroup(groupId: string, memberId: string) {
     this.membersLoading = true;
