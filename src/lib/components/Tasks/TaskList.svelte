@@ -13,6 +13,14 @@
 		loading?: boolean;
 	}>();
 
+	// logging
+	$effect(() => {
+	  if (tasks && tasks.length > 0) {
+	    console.log('TaskList: First task data:', tasks[0]);
+	    console.log('TaskList: First task assignee:', tasks[0].assignee);
+	    console.log('TaskList: First task assignee_id:', tasks[0].assignee_id);
+	  }
+	});
 	// Events
 	const dispatch = createEventDispatcher();
 
