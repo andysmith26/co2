@@ -22,11 +22,13 @@ export interface Group {
 export interface GroupMember {
   id: string;
   group_id: string;
-  user_id: string;
+  user_id?: string | null;
+  student_id?: string | null;
   role: typeof GROUP_MEMBER_ROLES[keyof typeof GROUP_MEMBER_ROLES];
   created_at: string;
   // These fields may come from joins with the users/students table
   first_name?: string;
+  last_name?: string;
   last_initial?: string;
 }
 
