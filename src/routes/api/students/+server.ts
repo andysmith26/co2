@@ -15,8 +15,12 @@ export async function GET({ locals, request, url }) {
       return json({ error: 'Unauthorized' }, { status: 401 });
     }
     
-    // Check if there's a search parameter
+    // Check for query parameters
     const searchQuery = url.searchParams.get('search');
+    const limit = parseInt(url.searchParams.get('limit') || '50', 10);
+    const page = parseInt(url.searchParams.get('page') || '1', 10);
+    const offset = (page - 1) * limit;
+    const getAll = url.searchParams.get('all') === 'true';
     
     // For authenticated requests, use the server's Supabase client which has the session
     let query = locals.supabase
@@ -29,51 +33,32 @@ export async function GET({ locals, request, url }) {
       query = query.ilike('first_name', `%${searchQuery}%`);
     }
     
+    // If not getting all, apply pagination
+    if (!getAll) {
+      query = query.range(offset, offset + limit - 1);
+    }
+    
+    // Get total count for pagination
+    const { count: totalCount } = await locals.supabase
+      .from('students')
+      .select('*', { count: 'exact', head: true });
+    
     const { data, error } = await query;
       
     if (error) throw error;
     
     console.log(`API students - fetched ${data?.length || 0} students for user ${session.user.email}`);
-    return json(data || []);
+    return json({
+      students: data || [],
+      pagination: {
+        total: totalCount,
+        page,
+        limit,
+        pages: Math.ceil(totalCount / limit)
+      }
+    });
   } catch (err) {
     console.error('Error fetching students:', err);
     return json({ error: 'Failed to fetch students' }, { status: 500 });
-  }
-}
-
-export async function POST({ request, locals }) {
-  try {
-    // Get session
-    const session = await locals.getSession();
-    
-    if (!session) {
-      return json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    
-    const body = await request.json();
-    
-    if (!body.first_name) {
-      return json({ error: 'First name is required' }, { status: 400 });
-    }
-    
-    // Use the server's Supabase client which has the session
-    const { data, error } = await locals.supabase
-      .from('students')
-      .insert({
-        first_name: body.first_name,
-        last_initial: body.last_initial?.charAt(0).toUpperCase() || '',
-        teacher_id: session.user.id, // Set the teacher_id to the logged-in user's ID
-        status: 'present'
-      })
-      .select()
-      .single();
-      
-    if (error) throw error;
-    
-    console.log(`API students - created student for user ${session.user.email}`);
-    return json(data, { status: 201 });
-  } catch (err) {
-    console.error('Error creating student:', err);
-    return json({ error: 'Failed to create student' }, { status: 500 });
   }
 }
