@@ -144,18 +144,18 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
     }
     
     // If assignee is specified, verify they are a member of the group
-    if (body.assignee_id) {
-      const { data: assigneeMember, error: assigneeError } = await supabase
-        .from('group_members')
-        .select('id')
-        .eq('group_id', project.group_id)
-        .eq('user_id', body.assignee_id)
-        .single();
-        
-      if (assigneeError || !assigneeMember) {
-        return json({ error: 'Assignee is not a member of this group' }, { status: 400 });
-      }
-    }
+if (body.assignee_id) {
+  // Check if the assignee is in the group (either as a user or a student)
+  const { data: groupMembers, error: membersError } = await supabase
+    .from('group_members')
+    .select('id, role, user_id, student_id')
+    .eq('group_id', project.group_id)
+    .or(`user_id.eq.${body.assignee_id},student_id.eq.${body.assignee_id}`);
+    
+  if (membersError || groupMembers.length === 0) {
+    return json({ error: 'Assignee is not a member of this group' }, { status: 400 });
+  }
+}
     
     // Insert the new task
     const { data, error } = await supabase
