@@ -21,6 +21,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
       id,
       group_id,
       user_id,
+      student_id,
       role,
       created_at
     `)
@@ -39,6 +40,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
       id: member.id,
       group_id: member.group_id,
       user_id: member.user_id,
+      student_id: member.student_id,
       role: member.role,
       created_at: member.created_at,
       first_name: 'Unknown',
@@ -46,7 +48,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
       last_initial: ''
     };
     
-    if (member.role === GROUP_MEMBER_ROLES.TEACHER) {
+    if (member.role === GROUP_MEMBER_ROLES.TEACHER && member.user_id) {
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('first_name, last_name')
@@ -57,11 +59,11 @@ export const GET: RequestHandler = async ({ params, locals }) => {
         memberData.first_name = profileData.first_name || 'Unknown';
         memberData.last_name = profileData.last_name || '';
       }
-    } else {
+    } else if (member.role === GROUP_MEMBER_ROLES.STUDENT && member.student_id) {
       const { data: studentData, error: studentError } = await supabase
         .from('students')
         .select('first_name, last_initial')
-        .eq('id', member.user_id)
+        .eq('id', member.student_id)
         .single();
         
       if (!studentError && studentData) {
@@ -85,15 +87,28 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
   }
 
   try {
-    const { user_id, role } = await request.json();
+    const { user_id, student_id, role } = await request.json();
     
-    // Validate input
-    if (!user_id || typeof user_id !== 'string') {
-      return json({ error: 'User ID is required' }, { status: 400 });
+    // Validate input - must have either user_id or student_id but not both
+    if (!user_id && !student_id) {
+      return json({ error: 'Either user ID or student ID is required' }, { status: 400 });
+    }
+    
+    if (user_id && student_id) {
+      return json({ error: 'Cannot provide both user ID and student ID' }, { status: 400 });
     }
     
     if (!Object.values(GROUP_MEMBER_ROLES).includes(role)) {
       return json({ error: 'Invalid role' }, { status: 400 });
+    }
+    
+    // Validate role and ID consistency
+    if (role === GROUP_MEMBER_ROLES.TEACHER && !user_id) {
+      return json({ error: 'Teachers must have a user ID' }, { status: 400 });
+    }
+    
+    if (role === GROUP_MEMBER_ROLES.STUDENT && !student_id) {
+      return json({ error: 'Students must have a student ID' }, { status: 400 });
     }
     
     const supabase = getSupabase(session.access_token);
@@ -113,18 +128,25 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
     }
     
     // Then, check if the member already exists in this group
-    const { data: existingMember, error: existingError } = await supabase
+    let existingQuery = supabase
       .from('group_members')
       .select('id')
-      .eq('group_id', groupId)
-      .eq('user_id', user_id);
+      .eq('group_id', groupId);
+      
+    if (user_id) {
+      existingQuery = existingQuery.eq('user_id', user_id);
+    } else {
+      existingQuery = existingQuery.eq('student_id', student_id);
+    }
+    
+    const { data: existingMember, error: existingError } = await existingQuery;
       
     if (existingError) {
       return json({ error: existingError.message }, { status: 500 });
     }
     
     if (existingMember && existingMember.length > 0) {
-      return json({ error: 'User is already a member of this group' }, { status: 409 });
+      return json({ error: 'User or student is already a member of this group' }, { status: 409 });
     }
     
     // Add the member
@@ -132,7 +154,8 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
       .from('group_members')
       .insert([{
         group_id: groupId,
-        user_id,
+        user_id: user_id || null,
+        student_id: student_id || null,
         role
       }])
       .select()
@@ -152,7 +175,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
     };
     
     // Get user details to include in the response
-    if (role === GROUP_MEMBER_ROLES.TEACHER) {
+    if (role === GROUP_MEMBER_ROLES.TEACHER && user_id) {
       const { data: profileData } = await supabase
         .from('profiles')
         .select('first_name, last_name')
@@ -163,11 +186,11 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
         memberResponse.first_name = profileData.first_name || 'Unknown';
         memberResponse.last_name = profileData.last_name || '';
       }
-    } else {
+    } else if (role === GROUP_MEMBER_ROLES.STUDENT && student_id) {
       const { data: studentData } = await supabase
         .from('students')
         .select('first_name, last_initial')
-        .eq('id', user_id)
+        .eq('id', student_id)
         .single();
         
       if (studentData) {
