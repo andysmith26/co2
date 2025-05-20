@@ -192,7 +192,7 @@
 			<p class="text-gray-500 mb-6">
 				The project you're looking for may have been deleted or does not exist.
 			</p>
-			
+			<a
 				href="/projects"
 				class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 inline-block"
 			>
