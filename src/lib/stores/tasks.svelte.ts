@@ -1,0 +1,161 @@
+// src/lib/stores/tasks.svelte.ts
+import { browser } from '$app/environment';
+import type { Task } from '../types';
+
+class TaskStore {
+  // Use $state for reactive properties with explicit type declarations
+  tasks: Task[] = $state([]);
+  loading: boolean = $state(false);
+  error: string | null = $state(null);
+  currentProjectId: string | null = $state(null);
+  
+  constructor() {
+    // We don't fetch tasks on initial load since they are project-specific
+  }
+  
+  async fetchTasksForProject(projectId: string) {
+    this.loading = true;
+    this.error = null;
+    this.currentProjectId = projectId;
+    
+    try {
+      const response = await fetch(`/api/projects/${projectId}/tasks`);
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch tasks');
+      }
+      
+      const data = await response.json();
+      this.tasks = data || [];
+    } catch (err: any) {
+      console.error('Error fetching tasks:', err);
+      this.error = err.message;
+    } finally {
+      this.loading = false;
+    }
+  }
+  
+  getTasks() {
+    return this.tasks;
+  }
+  
+  getTaskById(taskId: string) {
+    return this.tasks.find(task => task.id === taskId);
+  }
+  
+  async createTask(projectId: string, title: string, assigneeId?: string, description?: string) {
+    this.loading = true;
+    this.error = null;
+    
+    try {
+      // Validate input
+      if (!title.trim()) {
+        throw new Error('Task title is required');
+      }
+      
+      const response = await fetch(`/api/projects/${projectId}/tasks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title,
+          assignee_id: assigneeId,
+          description
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create task');
+      }
+      
+      const newTask = await response.json();
+      
+      // Update local state
+      this.tasks = [...this.tasks, newTask];
+      return newTask;
+    } catch (err: any) {
+      console.error('Error creating task:', err);
+      this.error = err.message;
+      throw err;
+    } finally {
+      this.loading = false;
+    }
+  }
+  
+  async updateTask(projectId: string, taskId: string, updates: Partial<Task>) {
+    this.loading = true;
+    this.error = null;
+    
+    try {
+      // Validate input
+      if (updates.title !== undefined && !updates.title.trim()) {
+        throw new Error('Task title is required');
+      }
+      
+      const response = await fetch(`/api/projects/${projectId}/tasks/${taskId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update task');
+      }
+      
+      const updatedTask = await response.json();
+      
+      // Update local state
+      this.tasks = this.tasks.map(task => 
+        task.id === taskId ? updatedTask : task
+      );
+      
+      return updatedTask;
+    } catch (err: any) {
+      console.error('Error updating task:', err);
+      this.error = err.message;
+      throw err;
+    } finally {
+      this.loading = false;
+    }
+  }
+  
+  async deleteTask(projectId: string, taskId: string) {
+    this.loading = true;
+    this.error = null;
+    
+    try {
+      const response = await fetch(`/api/projects/${projectId}/tasks/${taskId}`, {
+        method: 'DELETE'
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete task');
+      }
+      
+      // Update local state
+      this.tasks = this.tasks.filter(task => task.id !== taskId);
+      
+      return true;
+    } catch (err: any) {
+      console.error('Error deleting task:', err);
+      this.error = err.message;
+      throw err;
+    } finally {
+      this.loading = false;
+    }
+  }
+  
+  async updateTaskStatus(projectId: string, taskId: string, status: string) {
+    return this.updateTask(projectId, taskId, { status });
+  }
+  
+  async assignTask(projectId: string, taskId: string, assigneeId: string | null) {
+    return this.updateTask(projectId, taskId, { assignee_id: assigneeId });
+  }
+}
+
+// Create and export a single instance
+export const taskStore = new TaskStore();
