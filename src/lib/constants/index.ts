@@ -1,5 +1,11 @@
 // src/lib/constants/index.ts
 
+export const PROJECT_STATUS = {
+  ACTIVE: 'active',
+  COMPLETED: 'completed',
+  ARCHIVED: 'archived'
+} as const;
+
 // Task status constants
 export const TASK_STATUS = {
     TODO: 'todo',
