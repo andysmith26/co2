@@ -3,6 +3,7 @@
 	import { groupStore } from '$lib/stores/groups.svelte.ts';
 	import GroupForm from '$lib/components/Groups/GroupForm.svelte';
 	import MemberManager from '$lib/components/Groups/MemberManager.svelte';
+	import { GROUP_MEMBER_ROLES } from '$lib/constants';
 
 	// State with explicit type declarations
 	let isEditing: boolean = $state(false);
