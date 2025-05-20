@@ -76,3 +76,41 @@ export interface TaskCardProps {
   task: Task;
   compact?: boolean;
 }
+
+// Project Status Constants
+export const PROJECT_STATUS = {
+  ACTIVE: 'active',
+  COMPLETED: 'completed',
+  ARCHIVED: 'archived'
+} as const;
+
+// Task Status Constants 
+export const TASK_STATUS = {
+  TODO: 'todo',
+  IN_PROGRESS: 'in-progress',
+  COMPLETED: 'completed'
+} as const;
+
+// Project type definition
+export interface Project {
+  id: string;
+  title: string;
+  description?: string | null;
+  status: typeof PROJECT_STATUS[keyof typeof PROJECT_STATUS];
+  created_by: string;
+  group_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// Task type definition
+export interface Task {
+  id: string;
+  project_id: string;
+  title: string;
+  description?: string | null;
+  status: typeof TASK_STATUS[keyof typeof TASK_STATUS];
+  assignee_id?: string | null;
+  created_at: string;
+  updated_at: string;
+}
