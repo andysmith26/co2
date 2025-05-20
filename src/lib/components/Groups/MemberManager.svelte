@@ -51,7 +51,10 @@
 			const data = await response.json();
 
 			// Filter out users who are already members
-			const existingUserIds = members.map((m) => m.user_id);
+			const existingUserIds = members
+			  .filter(m => selectedRole === GROUP_MEMBER_ROLES.TEACHER ? m.user_id : m.student_id)
+			  .map(m => selectedRole === GROUP_MEMBER_ROLES.TEACHER ? m.user_id : m.student_id);
+			  
 			searchResults = data.filter((user) => !existingUserIds.includes(user.id));
 		} catch (err) {
 			console.error('Error searching users:', err);
@@ -79,10 +82,20 @@
 		error = null;
 
 		try {
+			// Properly format the payload based on member type
+			const payload = {
+				role: selectedRole,
+			};
+			
+			if (selectedRole === GROUP_MEMBER_ROLES.TEACHER) {
+				payload['user_id'] = userId;
+			} else {
+				payload['student_id'] = userId;
+			}
+			
 			dispatch('addMember', {
 				groupId,
-				userId,
-				role: selectedRole,
+				...payload,
 			});
 
 			// Clear search after adding
@@ -126,6 +139,7 @@
 	});
 </script>
 
+<!-- HTML template remains mostly unchanged, just add the correct member filtering -->
 <div class="member-manager my-6">
 	<h3 class="text-lg font-medium mb-4">Group Members</h3>
 
