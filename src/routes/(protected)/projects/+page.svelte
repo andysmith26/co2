@@ -106,7 +106,85 @@
 			title: 'Network',
 			task: { title: 'support robot coding', assignee: 'putnmo' },
 		},
-	]);
+{
+	id: '22',
+	title: 'tbd',
+	task: { title: 'explore ideas by looking at example projects', assignee: 'allema' },
+},
+{
+	id: '23',
+	title: 'kitbot parts',
+	task: { title: 'examine and list key kitbot components', assignee: 'bohrsa' },
+},
+{
+	id: '24',
+	title: 'gear box',
+	task: { title: 'sketch gearbox layout and list materials needed', assignee: 'dowzha' },
+},
+{
+	id: '25',
+	title: 'game controller',
+	task: { title: 'research basic controller designs and sketch an idea', assignee: 'emurlu' },
+},
+{
+	id: '26',
+	title: 'perseverence bot',
+	task: { title: 'define goal for the bot and identify base structure', assignee: 'krusbr' },
+},
+{
+	id: '27',
+	title: 'card dealing robot',
+	task: { title: 'experiment with mechanisms to move and drop cards', assignee: 'littco' },
+},
+{
+	id: '28',
+	title: 'catapult bot',
+	task: { title: 'test simple throwing arm with rubber bands or springs', assignee: 'mcnaad' },
+},
+{
+	id: '29',
+	title: 'smallest robot',
+	task: { title: 'gather parts and sketch the smallest layout possible', assignee: 'namkel' },
+},
+{
+	id: '30',
+	title: 'elevator bot',
+	task: { title: 'research pulley/lift mechanisms and draft one idea', assignee: 'pierau' },
+},
+{
+	id: '31',
+	title: 'tbd',
+	task: { title: 'talk to peers and list three project interests', assignee: 'robidy' },
+},
+{
+	id: '32',
+	title: 'a website',
+	task: { title: 'choose a purpose and sketch a homepage layout', assignee: 'rosssa' },
+},
+{
+	id: '33',
+	title: 'fast car',
+	task: { title: 'test wheel and motor combinations for speed', assignee: 'roylde' },
+},
+{
+	id: '34',
+	title: 'tbd',
+	task: { title: 'exploring possibilities', assignee: 'silvbr' },
+},
+{
+	id: '35',
+	title: 'exploring LEDs',
+	task: { title: 'set up a basic LED circuit with switch', assignee: 'stalru' },
+},
+{
+	id: '36',
+	title: 'exploring circuits+3d',
+	task: { title: 'prototype a simple circuit and sketch 3D part', assignee: 'tuckad' },
+},
+
+
+
+]);
 
 	// Project filter
 	let searchQuery = $state('');
