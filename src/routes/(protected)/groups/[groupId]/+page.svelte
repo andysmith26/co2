@@ -73,19 +73,18 @@
 	}
 
 	async function handleAddMember(event) {
-		try {
-			const { userId, role } = event.detail;
-			await groupStore.addMemberToGroup(groupId, userId, role);
-			error = null;
-		} catch (err) {
-			if (err instanceof Error) {
-				error = err.message;
-			} else {
-				error = 'Failed to add member to group';
-			}
-			console.error('Error adding member:', err);
-		}
-	}
+	    try {
+	      await groupStore.addMemberToGroup(groupId, event.detail);
+	      error = null;
+	    } catch (err) {
+	      if (err instanceof Error) {
+	        error = err.message;
+	      } else {
+	        error = 'Failed to add member to group';
+	      }
+	      console.error('Error adding member:', err);
+	    }
+	  }
 
 	async function handleRemoveMember(event) {
 		try {
