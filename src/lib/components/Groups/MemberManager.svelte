@@ -142,9 +142,8 @@
 		error = null;
 
 		try {
-			dispatch('addMember', {
-				groupId,
-				userId,
+			await dispatch('addMember', {
+				userId, // This needs to match what the parent component expects
 				role: selectedRole,
 			});
 
