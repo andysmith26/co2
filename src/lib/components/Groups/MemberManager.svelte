@@ -137,16 +137,23 @@
 		}
 	}
 
-	async function addMember(userId: string) {
+	async function addMember(id: string, isStudent = false) {
 		isAdding = true;
 		error = null;
 
 		try {
-			dispatch('addMember', {
-				groupId,
-				userId, // This matches what handleAddMember expects
-				role: selectedRole,
-			});
+			// Differentiate between student and teacher
+			if (selectedRole === GROUP_MEMBER_ROLES.STUDENT) {
+				dispatch('addMember', {
+					studentId: id, // For students, pass the ID as studentId
+					role: selectedRole,
+				});
+			} else {
+				dispatch('addMember', {
+					userId: id, // For teachers, pass the ID as userId
+					role: selectedRole,
+				});
+			}
 
 			// Clear search after adding
 			searchQuery = '';
@@ -156,7 +163,7 @@
 			if (viewMode === 'all') {
 				setTimeout(() => {
 					loadAllStudents(currentPage);
-				}, 300); // Give time for the server to process the addition
+				}, 300);
 			}
 		} catch (err) {
 			console.error('Error adding member:', err);
@@ -316,13 +323,13 @@
 									? user.last_initial
 									: user.last_name || ''}
 							</span>
-							<button
-								on:click={() => addMember(user.id)}
-								disabled={isAdding}
-								class="px-3 py-1 text-xs font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700"
-							>
-								Add
-							</button>
+<button
+	on:click={() => addMember(user.id)}
+	disabled={isAdding}
+	class="px-3 py-1 text-xs font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700"
+>
+	Add
+</button>
 						</li>
 					{/each}
 				</ul>
@@ -349,13 +356,13 @@
 						{#each allStudents as student (student.id)}
 							<li class="p-2 hover:bg-gray-50 flex justify-between items-center">
 								<span>{student.first_name} {student.last_initial}</span>
-								<button
-									on:click={() => addMember(student.id)}
-									disabled={isAdding}
-									class="px-3 py-1 text-xs font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700"
-								>
-									Add
-								</button>
+<button
+	on:click={() => addMember(student.id)}
+	disabled={isAdding}
+	class="px-3 py-1 text-xs font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700"
+>
+	Add
+</button>
 							</li>
 						{/each}
 					</ul>
