@@ -34,57 +34,47 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
     // Process each task to include assignee information
     const tasksWithAssignees = await Promise.all(tasks.map(async (task) => {
-      // If there's no assignee_id, return the task as is
-      if (!task.assignee_id) {
-        return task;
-      }
+      let taskWithAssignees = { ...task };
       
-      // First, try to find the assignee as a user (teacher)
-      const { data: teacher, error: teacherError } = await supabase
-        .from('profiles')
-        .select('id, first_name, last_name, email')
-        .eq('id', task.assignee_id)
-        .single();
-      
-      if (!teacherError && teacher) {
-        // If found as a teacher, include teacher data
-        return {
-          ...task,
-          assignee: {
+      // Check for teacher assignee
+      if (task.assignee_id) {
+        const { data: teacher, error: teacherError } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name, email')
+          .eq('id', task.assignee_id)
+          .single();
+        
+        if (!teacherError && teacher) {
+          taskWithAssignees.assignee = {
             id: teacher.id,
             first_name: teacher.first_name || 'Unknown',
             last_name: teacher.last_name || '',
             email: teacher.email,
             role: 'teacher'
-          }
-        };
+          };
+        }
       }
       
-      // If not found as a teacher, try as a student
-      const { data: student, error: studentError } = await supabase
-        .from('students')
-        .select('id, first_name, last_initial, teacher_id')
-        .eq('id', task.assignee_id)
-        .single();
-      
-      if (!studentError && student) {
-        // If found as a student, include student data
-        return {
-          ...task,
-          assignee: {
+      // Check for student assignee
+      if (task.student_assignee_id) {
+        const { data: student, error: studentError } = await supabase
+          .from('students')
+          .select('id, first_name, last_initial, teacher_id')
+          .eq('id', task.student_assignee_id)
+          .single();
+        
+        if (!studentError && student) {
+          taskWithAssignees.student_assignee = {
             id: student.id,
             first_name: student.first_name || 'Unknown',
             last_initial: student.last_initial || '',
             teacher_id: student.teacher_id,
             role: 'student'
-          }
-        };
+          };
+        }
       }
       
-      // If not found in either table, return task with original assignee_id
-      // but mark as not found to help with debugging
-      console.log(`Assignee not found for task ${task.id}, assignee_id: ${task.assignee_id}`);
-      return task;
+      return taskWithAssignees;
     }));
     
     return json(tasksWithAssignees);
@@ -143,14 +133,26 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
       return json({ error: 'Only teachers can create tasks' }, { status: 403 });
     }
     
-    // If assignee is specified, verify they are a member of the group
-if (body.assignee_id) {
-  // Check if the assignee is in the group (either as a user or a student)
+    // If any assignee is specified, verify they are a member of the group
+const assigneeId = body.assignee_id || body.student_assignee_id;
+if (assigneeId) {
+  // Determine which field to check based on assignee type
+  let filterQuery = '';
+  if (body.assignee_type === 'teacher' && body.assignee_id) {
+    filterQuery = `user_id.eq.${body.assignee_id}`;
+  } else if (body.assignee_type === 'student' && body.student_assignee_id) {
+    filterQuery = `student_id.eq.${body.student_assignee_id}`;
+  } else {
+    // If no specific type provided but an ID is, check both fields
+    filterQuery = `user_id.eq.${assigneeId},student_id.eq.${assigneeId}`;
+  }
+
+  // Check if the assignee is in the group
   const { data: groupMembers, error: membersError } = await supabase
     .from('group_members')
     .select('id, role, user_id, student_id')
     .eq('group_id', project.group_id)
-    .or(`user_id.eq.${body.assignee_id},student_id.eq.${body.assignee_id}`);
+    .or(filterQuery);
     
   if (membersError || groupMembers.length === 0) {
     return json({ error: 'Assignee is not a member of this group' }, { status: 400 });
@@ -165,7 +167,9 @@ if (body.assignee_id) {
         title: body.title,
         description: body.description || null,
         status: body.status || 'todo',
-        assignee_id: body.assignee_id || null
+        assignee_id: body.assignee_id || null,
+        student_assignee_id: body.student_assignee_id || null,
+        assignee_type: body.assignee_type || null
       })
       .select()
       .single();

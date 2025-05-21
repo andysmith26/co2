@@ -1,12 +1,17 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import type { Task } from '../../types';
-	import { TASK_STATUS } from '../../constants';
+	import { TASK_STATUS, GROUP_MEMBER_ROLES } from '../../constants';
 
 	// Props
-	const { tasks = [], loading = false } = $props<{
+	const {
+		tasks = [],
+		loading = false,
+		groupMembers = [],
+	} = $props<{
 		tasks: Task[];
 		loading?: boolean;
+		groupMembers?: any[]; // Use the correct type based on your application
 	}>();
 
 	// Events
@@ -16,6 +21,7 @@
 	let editingTaskId = $state<string | null>(null);
 	let editTitle = $state('');
 	let editStatus = $state('');
+	let editingAssigneeTaskId = $state<string | null>(null);
 
 	// Handle status change
 	function handleStatusChange(task: Task, newStatus: string) {
@@ -25,11 +31,24 @@
 		});
 	}
 
+	// Helper functions to get available assignees
+	function getTeacherOptions() {
+		return groupMembers.filter((member) => member.role === GROUP_MEMBER_ROLES.TEACHER);
+	}
+
+	function getStudentOptions() {
+		return groupMembers.filter((member) => member.role === GROUP_MEMBER_ROLES.STUDENT);
+	}
+
 	// Handle edit task
 	function startEditing(task: Task) {
 		editingTaskId = task.id;
 		editTitle = task.title;
 		editStatus = task.status;
+	}
+
+	function startEditingAssignee(task: Task) {
+		editingTaskId = task.id;
 	}
 
 	function cancelEditing() {
@@ -56,10 +75,15 @@
 	}
 
 	// Handle assignee selection
-	function handleAssigneeChange(task: Task, assigneeId: string | null) {
+	function handleAssigneeChange(
+		task: Task,
+		assigneeId: string | null,
+		assigneeType: 'teacher' | 'student' | null = null
+	) {
 		dispatch('assign', {
 			taskId: task.id,
 			assigneeId,
+			assigneeType,
 		});
 	}
 
@@ -158,14 +182,69 @@
 								{/if}
 							</td>
 							<td class="px-6 py-4 whitespace-nowrap">
-								<div class="text-sm text-gray-900">
-									{#if task.assignee}
-										{task.assignee.first_name}
-										{task.assignee.last_initial || task.assignee.last_name || ''}
-									{:else}
-										<span class="text-gray-400">Unassigned</span>
-									{/if}
-								</div>
+								{#if editingTaskId === task.id}
+									<select
+										class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+										on:change={(e) => {
+											const value = e.currentTarget.value;
+											if (value === 'null') {
+												handleAssigneeChange(task, null, null);
+											} else {
+												const [type, id] = value.split(':');
+												handleAssigneeChange(task, id, type as 'teacher' | 'student');
+											}
+										}}
+										value={task.assignee_type === 'teacher' && task.assignee_id
+											? `teacher:${task.assignee_id}`
+											: task.assignee_type === 'student' && task.student_assignee_id
+												? `student:${task.student_assignee_id}`
+												: 'null'}
+									>
+										<option value="null">Unassigned</option>
+										<optgroup label="Teachers">
+											{#each getTeacherOptions() as teacher}
+												<option value={`teacher:${teacher.id}`}>
+													{teacher.first_name}
+													{teacher.last_name || ''} (Teacher)
+												</option>
+											{/each}
+										</optgroup>
+										<optgroup label="Students">
+											{#each getStudentOptions() as student}
+												<option value={`student:${student.id}`}>
+													{student.first_name}
+													{student.last_initial || ''} (Student)
+												</option>
+											{/each}
+										</optgroup>
+									</select>
+								{:else}
+									<div class="text-sm text-gray-900">
+										{#if task.assignee_type === 'teacher' && task.assignee}
+											<div class="flex items-center">
+												<span class="mr-2 inline-block h-2 w-2 rounded-full bg-blue-500"></span>
+												{task.assignee.first_name}
+												{task.assignee.last_name || ''}
+												<span class="ml-1 text-xs text-gray-500">(Teacher)</span>
+											</div>
+										{:else if task.assignee_type === 'student' && task.student_assignee}
+											<div class="flex items-center">
+												<span class="mr-2 inline-block h-2 w-2 rounded-full bg-green-500"></span>
+												{task.student_assignee.first_name}
+												{task.student_assignee.last_initial || ''}
+												<span class="ml-1 text-xs text-gray-500">(Student)</span>
+											</div>
+										{:else}
+											<span class="text-gray-400">Unassigned</span>
+										{/if}
+										<button
+											on:click={() => startEditingAssignee(task)}
+											class="ml-2 text-xs text-indigo-600 hover:text-indigo-800"
+										>
+											(change)
+										</button>
+									</div>
+								{/if}
 							</td>
 							<td class="px-6 py-4 text-right text-sm font-medium whitespace-nowrap">
 								{#if editingTaskId === task.id}

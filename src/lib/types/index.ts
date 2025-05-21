@@ -112,7 +112,9 @@ export interface Task {
   title: string;
   description?: string | null;
   status: typeof TASK_STATUS[keyof typeof TASK_STATUS];
-  assignee_id?: string | null;
+  assignee_id?: string | null;        // For teacher assignees
+  student_assignee_id?: string | null; // For student assignees
+  assignee_type?: 'teacher' | 'student' | null; // Indicates which assignee field is being used
   created_at: string;
   updated_at: string;
 }

@@ -18,7 +18,14 @@
 	// State
 	let title: string = $state(initialTask?.title || '');
 	let description: string = $state(initialTask?.description || '');
-	let assigneeId: string | null = $state(initialTask?.assignee_id || null);
+	let assigneeId: string | null = $state(
+		initialTask?.assignee_type === 'teacher'
+			? initialTask?.assignee_id
+			: initialTask?.assignee_type === 'student'
+				? initialTask?.student_assignee_id
+				: initialTask?.assignee_id || initialTask?.student_assignee_id || null
+	);
+	let assigneeType: 'teacher' | 'student' | null = $state(initialTask?.assignee_type || null);
 	let status: string = $state(initialTask?.status || TASK_STATUS.TODO);
 	let error: string | null = $state(null);
 	let isSubmitting: boolean = $state(false);
@@ -49,6 +56,7 @@
 				title,
 				description: description || undefined,
 				assigneeId,
+				assigneeType,
 				status,
 			});
 
@@ -57,6 +65,7 @@
 				title = '';
 				description = '';
 				assigneeId = null;
+				assigneeType = null;
 				status = TASK_STATUS.TODO;
 			}
 		} catch (err) {
@@ -115,15 +124,34 @@
 				>
 				<select
 					id="task-assignee"
-					bind:value={assigneeId}
+					on:change={(e) => {
+						const selectedValue = e.currentTarget.value;
+						if (selectedValue === 'null') {
+							assigneeId = null;
+							assigneeType = null;
+						} else {
+							// Format is either "teacher:{id}" or "student:{id}"
+							const [type, id] = selectedValue.split(':');
+							assigneeId = id;
+							assigneeType = type as 'teacher' | 'student';
+						}
+					}}
 					class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+					value={assigneeId && assigneeType ? `${assigneeType}:${assigneeId}` : 'null'}
 				>
-					<option value={null}>Unassigned</option>
+					<option value="null">Unassigned</option>
 					{#each groupMembers as member}
-						<option value={member.user_id || member.student_id}>
-							{member.first_name}
-							{member.last_initial || member.last_name || ''}
-						</option>
+						{#if member.user_id}
+							<option value={`teacher:${member.user_id}`}>
+								{member.first_name}
+								{member.last_name || ''} (Teacher)
+							</option>
+						{:else if member.student_id}
+							<option value={`student:${member.student_id}`}>
+								{member.first_name}
+								{member.last_initial || ''} (Student)
+							</option>
+						{/if}
 					{/each}
 				</select>
 			</div>

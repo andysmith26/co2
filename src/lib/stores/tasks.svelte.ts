@@ -44,7 +44,7 @@ class TaskStore {
     return this.tasks.find(task => task.id === taskId);
   }
   
-  async createTask(projectId: string, title: string, assigneeId?: string, description?: string) {
+  async createTask(projectId: string, title: string, assigneeId?: string, assigneeType?: 'teacher' | 'student' | null, description?: string) {
     this.loading = true;
     this.error = null;
     
@@ -54,12 +54,34 @@ class TaskStore {
         throw new Error('Task title is required');
       }
       
+      // Determine which assignee fields to send based on assignee type
+      let assigneeData: {
+        assignee_id?: string | null;
+        student_assignee_id?: string | null;
+        assignee_type?: 'teacher' | 'student' | null;
+      } = {
+        assignee_type: assigneeType
+      };
+      
+      if (assigneeType === 'teacher' && assigneeId) {
+        assigneeData.assignee_id = assigneeId;
+        assigneeData.student_assignee_id = null;
+      } else if (assigneeType === 'student' && assigneeId) {
+        assigneeData.student_assignee_id = assigneeId;
+        assigneeData.assignee_id = null;
+      } else {
+        // No assignee or invalid type
+        assigneeData.assignee_id = null;
+        assigneeData.student_assignee_id = null;
+        assigneeData.assignee_type = null;
+      }
+      
       const response = await fetch(`/api/projects/${projectId}/tasks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title,
-          assignee_id: assigneeId,
+          ...assigneeData,
           description
         })
       });
@@ -152,8 +174,22 @@ class TaskStore {
     return this.updateTask(projectId, taskId, { status });
   }
   
-  async assignTask(projectId: string, taskId: string, assigneeId: string | null) {
-    return this.updateTask(projectId, taskId, { assignee_id: assigneeId });
+  async assignTask(projectId: string, taskId: string, assigneeId: string | null, assigneeType: 'teacher' | 'student' | null = null) {
+    const updates: Partial<Task> = { assignee_type: assigneeType };
+    
+    if (assigneeType === 'teacher') {
+      updates.assignee_id = assigneeId;
+      updates.student_assignee_id = null;
+    } else if (assigneeType === 'student') {
+      updates.student_assignee_id = assigneeId;
+      updates.assignee_id = null;
+    } else {
+      // No assignee or unspecified type
+      updates.assignee_id = null;
+      updates.student_assignee_id = null;
+    }
+    
+    return this.updateTask(projectId, taskId, updates);
   }
 }
 

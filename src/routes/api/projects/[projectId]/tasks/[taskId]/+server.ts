@@ -70,34 +70,77 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
       updates.status = body.status;
     }
     
+    // Handle assignee type
+    if (body.assignee_type !== undefined) {
+      updates.assignee_type = body.assignee_type;
+    }
+    
+    // Get project's group_id for validation
+    let groupId: string | null = null;
+    if ((body.assignee_id !== undefined || body.student_assignee_id !== undefined) && 
+        (body.assignee_id || body.student_assignee_id)) {
+      // Get the project to find the group
+      const { data: project, error: projectError } = await supabase
+        .from('projects')
+        .select('group_id')
+        .eq('id', projectId)
+        .single();
+        
+      if (projectError) {
+        return json({ error: 'Project not found' }, { status: 404 });
+      }
+      
+      groupId = project.group_id;
+    }
+    
+    // Handle teacher assignee
     if (body.assignee_id !== undefined) {
       // If assignee is specified, verify they are a member of the group
-      if (body.assignee_id) {
-        // First get the project to find the group
-        const { data: project, error: projectError } = await supabase
-          .from('projects')
-          .select('group_id')
-          .eq('id', projectId)
-          .single();
-          
-        if (projectError) {
-          return json({ error: 'Project not found' }, { status: 404 });
-        }
-        
-        // Then check if assignee is a member of the group
+      if (body.assignee_id && groupId) {
+        // Check if teacher is a member of the group
         const { data: assigneeMember, error: assigneeError } = await supabase
           .from('group_members')
           .select('id')
-          .eq('group_id', project.group_id)
+          .eq('group_id', groupId)
           .eq('user_id', body.assignee_id)
           .single();
           
         if (assigneeError || !assigneeMember) {
-          return json({ error: 'Assignee is not a member of this group' }, { status: 400 });
+          return json({ error: 'Teacher assignee is not a member of this group' }, { status: 400 });
         }
       }
       
       updates.assignee_id = body.assignee_id;
+      
+      // If explicitly setting teacher assignee, clear any student assignee
+      if (body.assignee_id && body.assignee_type === 'teacher') {
+        updates.student_assignee_id = null;
+      }
+    }
+    
+    // Handle student assignee
+    if (body.student_assignee_id !== undefined) {
+      // If student assignee is specified, verify they are a member of the group
+      if (body.student_assignee_id && groupId) {
+        // Check if student is a member of the group
+        const { data: studentMember, error: studentError } = await supabase
+          .from('group_members')
+          .select('id')
+          .eq('group_id', groupId)
+          .eq('student_id', body.student_assignee_id)
+          .single();
+          
+        if (studentError || !studentMember) {
+          return json({ error: 'Student assignee is not a member of this group' }, { status: 400 });
+        }
+      }
+      
+      updates.student_assignee_id = body.student_assignee_id;
+      
+      // If explicitly setting student assignee, clear any teacher assignee
+      if (body.student_assignee_id && body.assignee_type === 'student') {
+        updates.assignee_id = null;
+      }
     }
     
     // Only proceed if there are updates to make
