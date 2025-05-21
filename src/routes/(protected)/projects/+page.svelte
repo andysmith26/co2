@@ -11,23 +11,54 @@
 	let showCreateForm = $state(false);
 	let selectedGroupId = $state('');
 	let error = $state<string | null>(null);
+	let refreshInterval = $state<number | null>(null);
+	let autoRefresh = $state(true);
 
 	// Get stores data with $derived
 	const projects = $derived(projectStore.projects);
 	const loading = $derived(projectStore.loading);
+	const tasksLoading = $derived(projectStore.tasksLoading);
+	const projectTasks = $derived(projectStore.projectTasks);
 	const groups = $derived(groupStore.groups);
 	const groupsLoading = $derived(groupStore.loading);
 
-	// Initialize data
-	$effect(() => {
+	// Initialize data - MODIFIED
+	$effect.root(() => {
+		// One-time initialization that won't react to store changes
 		groupStore.fetchGroups();
-		projectStore.fetchProjects();
+
+		// Set up auto-refresh every 30 seconds
+		if (autoRefresh && !refreshInterval) {
+			refreshInterval = setInterval(() => {
+				projectStore.fetchProjects();
+			}, 30000) as unknown as number;
+		}
+
+		// Clean up interval when component is destroyed
+		return () => {
+			if (refreshInterval) {
+				clearInterval(refreshInterval);
+				refreshInterval = null;
+			}
+		};
+	});
+
+	// Initial data load once - separate from the auto-refresh
+	$effect.root(() => {
+		// Initial load of projects
+		if (selectedGroupId) {
+			projectStore.fetchProjectsByGroup(selectedGroupId);
+		} else {
+			projectStore.fetchProjects();
+		}
 	});
 
 	// When group selection changes, fetch projects for that group
 	$effect(() => {
-		if (selectedGroupId) {
-			projectStore.fetchProjectsByGroup(selectedGroupId);
+		const currentGroupId = selectedGroupId; // Capture the current value
+
+		if (currentGroupId) {
+			projectStore.fetchProjectsByGroup(currentGroupId);
 		} else {
 			projectStore.fetchProjects();
 		}
@@ -58,18 +89,85 @@
 		const project = event.detail;
 		goto(`/projects/${project.id}`);
 	}
+
+	function toggleAutoRefresh() {
+		autoRefresh = !autoRefresh;
+		if (autoRefresh) {
+			refreshInterval = setInterval(() => {
+				projectStore.fetchProjects();
+			}, 30000) as unknown as number;
+		} else if (refreshInterval) {
+			clearInterval(refreshInterval);
+			refreshInterval = null;
+		}
+	}
+
+	function refreshProjects() {
+		projectStore.fetchProjects();
+	}
+
+	// Calculate loading state
+	const isLoading = $derived(loading || tasksLoading);
+
+	// Calculate total tasks
+	const totalTasks = $derived(() => {
+		let count = 0;
+		Object.values(projectTasks).forEach((tasks) => {
+			count += tasks.length;
+		});
+		return count;
+	});
 </script>
 
 <div class="container-fluid p-2">
-	<header class="mb-4 flex items-center justify-between flex-wrap gap-2">
-		<h2 class="h2">Projects</h2>
+	<header class="mb-4 flex flex-wrap items-center justify-between gap-2">
+		<div>
+			<h2 class="h2">Project Board</h2>
+			<p class="text-sm text-gray-500">
+				{projects.length} Projects • {totalTasks} Tasks
+			</p>
+		</div>
 
 		<!-- Controls -->
-		<div class="flex items-center gap-2 flex-wrap">
+		<div class="flex flex-wrap items-center gap-2">
+			<!-- Refresh Control -->
+			<div class="flex items-center gap-2">
+				<button
+					on:click={refreshProjects}
+					class="btn btn-sm btn-circle btn-ghost"
+					title="Refresh"
+					aria-label="Refresh projects"
+				>
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						class="h-5 w-5"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+						/>
+					</svg>
+				</button>
+				<label class="flex cursor-pointer items-center gap-1">
+					<input
+						type="checkbox"
+						class="toggle toggle-sm toggle-primary"
+						checked={autoRefresh}
+						on:change={toggleAutoRefresh}
+					/>
+					<span class="text-xs text-gray-500">Auto-refresh</span>
+				</label>
+			</div>
+
 			<!-- Group Filter -->
 			<select
 				bind:value={selectedGroupId}
-				class="select"
+				class="select select-sm select-bordered"
 				disabled={groupsLoading}
 			>
 				<option value="">All Groups</option>
@@ -80,11 +178,22 @@
 
 			<!-- Create Button -->
 			{#if !showCreateForm}
-				<button
-					on:click={() => (showCreateForm = true)}
-					class="btn btn-primary"
-				>
-					Create Project
+				<button on:click={() => (showCreateForm = true)} class="btn btn-primary btn-sm">
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						class="mr-1 h-5 w-5"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M12 4v16m8-8H4"
+						/>
+					</svg>
+					New Project
 				</button>
 			{/if}
 		</div>
@@ -98,17 +207,22 @@
 
 	{#if showCreateForm}
 		<div class="mb-6">
-			<ProjectForm
-				on:submit={handleCreateProject}
-				on:cancel={handleCancelCreate}
-			/>
+			<ProjectForm on:submit={handleCreateProject} on:cancel={handleCancelCreate} />
 		</div>
 	{/if}
 
-	<ProjectList
-		{projects}
-		loading={loading}
-		showGroupName={!selectedGroupId}
-		on:select={handleSelectProject}
-	/>
+	<!-- Loading indicator -->
+	{#if isLoading && projects.length === 0}
+		<div class="flex justify-center py-12">
+			<span class="loading loading-spinner loading-lg"></span>
+		</div>
+	{:else}
+		<ProjectList
+			{projects}
+			{loading}
+			showGroupName={!selectedGroupId}
+			tasksMap={projectTasks}
+			on:select={handleSelectProject}
+		/>
+	{/if}
 </div>

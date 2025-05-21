@@ -2,32 +2,26 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import type { Task } from '../../types';
-	import { TASK_STATUS, GROUP_MEMBER_ROLES } from '../../constants';
+	import { TASK_STATUS } from '../../constants';
 
 	// Props
 	const {
 		projectId = '',
-		groupMembers = []
+		groupMembers = [],
+		initialTask = null,
 	} = $props<{
 		projectId: string;
-		groupMembers: any[];  // We'll use any[] for now, ideally this would be properly typed
+		groupMembers: any[]; // We'll use any[] for now, ideally this would be properly typed
+		initialTask?: Task | null;
 	}>();
 
 	// State
-	let title: string = $state('');
-	let description: string = $state('');
-	let assigneeId: string | null = $state(null);
-	let status: string = $state(TASK_STATUS.TODO);
+	let title: string = $state(initialTask?.title || '');
+	let description: string = $state(initialTask?.description || '');
+	let assigneeId: string | null = $state(initialTask?.assignee_id || null);
+	let status: string = $state(initialTask?.status || TASK_STATUS.TODO);
 	let error: string | null = $state(null);
 	let isSubmitting: boolean = $state(false);
-
-	// Debug log group members to ensure we have the correct data
-	$effect(() => {
-		if (groupMembers.length > 0) {
-			console.log('TaskForm: Group members available for assignment:', groupMembers.length);
-			console.log('TaskForm: Sample group member:', groupMembers[0]);
-		}
-	});
 
 	// Events
 	const dispatch = createEventDispatcher();
@@ -51,17 +45,20 @@
 		try {
 			await dispatch('submit', {
 				projectId,
+				taskId: initialTask?.id,
 				title,
 				description: description || undefined,
 				assigneeId,
-				status
+				status,
 			});
 
-			// Reset form
-			title = '';
-			description = '';
-			assigneeId = null;
-			status = TASK_STATUS.TODO;
+			// If this is a new task, reset the form
+			if (!initialTask) {
+				title = '';
+				description = '';
+				assigneeId = null;
+				status = TASK_STATUS.TODO;
+			}
 		} catch (err) {
 			if (err instanceof Error) {
 				error = err.message;
@@ -73,34 +70,21 @@
 			isSubmitting = false;
 		}
 	}
-
-	// Helper function to format member display name
-	function formatMemberName(member: any): string {
-		if (member.role === GROUP_MEMBER_ROLES.STUDENT) {
-			return `${member.first_name} ${member.last_initial || ''} (Student)`;
-		} else {
-			return `${member.first_name} ${member.last_name || ''} (Teacher)`;
-		}
-	}
-
-	// Helper function to get member ID (either user_id or student_id)
-	function getMemberId(member: any): string {
-		return member.role === GROUP_MEMBER_ROLES.STUDENT ? member.student_id : member.user_id;
-	}
 </script>
 
-<div class="task-form p-4 bg-white rounded-lg shadow">
-	<h3 class="text-lg font-medium mb-4">Add New Task</h3>
+<div class="task-form rounded-lg bg-white p-4 shadow">
+	<h3 class="mb-4 text-lg font-medium">{initialTask ? 'Edit Task' : 'Add New Task'}</h3>
 
 	<form on:submit|preventDefault={handleSubmit} class="space-y-4">
 		{#if error}
-			<div class="p-3 bg-red-100 text-red-700 rounded-md">
+			<div class="rounded-md bg-red-100 p-3 text-red-700">
 				{error}
 			</div>
 		{/if}
 
 		<div class="form-control">
-			<label for="task-title" class="block text-sm font-medium text-gray-700 mb-1">Task Title</label>
+			<label for="task-title" class="mb-1 block text-sm font-medium text-gray-700">Task Title</label
+			>
 			<input
 				id="task-title"
 				type="text"
@@ -112,7 +96,7 @@
 		</div>
 
 		<div class="form-control">
-			<label for="task-description" class="block text-sm font-medium text-gray-700 mb-1"
+			<label for="task-description" class="mb-1 block text-sm font-medium text-gray-700"
 				>Description (optional)</label
 			>
 			<textarea
@@ -124,9 +108,9 @@
 			></textarea>
 		</div>
 
-		<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+		<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 			<div class="form-control">
-				<label for="task-assignee" class="block text-sm font-medium text-gray-700 mb-1"
+				<label for="task-assignee" class="mb-1 block text-sm font-medium text-gray-700"
 					>Assignee (optional)</label
 				>
 				<select
@@ -136,15 +120,16 @@
 				>
 					<option value={null}>Unassigned</option>
 					{#each groupMembers as member}
-						<option value={getMemberId(member)}>
-							{formatMemberName(member)}
+						<option value={member.user_id || member.student_id}>
+							{member.first_name}
+							{member.last_initial || member.last_name || ''}
 						</option>
 					{/each}
 				</select>
 			</div>
 
 			<div class="form-control">
-				<label for="task-status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+				<label for="task-status" class="mb-1 block text-sm font-medium text-gray-700">Status</label>
 				<select
 					id="task-status"
 					bind:value={status}
@@ -160,10 +145,16 @@
 		<div class="mt-4">
 			<button
 				type="submit"
-				class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+				class="rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none"
 				disabled={isSubmitting}
 			>
-				{isSubmitting ? 'Adding...' : 'Add Task'}
+				{isSubmitting
+					? initialTask
+						? 'Updating...'
+						: 'Adding...'
+					: initialTask
+						? 'Update Task'
+						: 'Add Task'}
 			</button>
 		</div>
 	</form>

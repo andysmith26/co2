@@ -1,14 +1,10 @@
-<!-- src/lib/components/Tasks/TaskList.svelte -->
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import type { Task } from '../../types';
-	import { TASK_STATUS, GROUP_MEMBER_ROLES } from '../../constants';
+	import { TASK_STATUS } from '../../constants';
 
 	// Props
-	const {
-		tasks = [],
-		loading = false,
-	} = $props<{
+	const { tasks = [], loading = false } = $props<{
 		tasks: Task[];
 		loading?: boolean;
 	}>();
@@ -21,34 +17,11 @@
 	let editTitle = $state('');
 	let editStatus = $state('');
 
-	// Debug logging for tasks
-	$effect(() => {
-		if (tasks && tasks.length > 0) {
-			console.log(`TaskList: Received ${tasks.length} tasks`);
-			
-			// Create a summary of assignee information for all tasks
-			const assigneeSummary = tasks.map(task => ({
-				task_id: task.id,
-				title: task.title,
-				assignee_id: task.assignee_id,
-				has_assignee_object: !!task.assignee,
-				assignee_details: task.assignee
-			}));
-			
-			console.table(assigneeSummary);
-			
-			// Log unique assignee_ids to check for the issue
-			const uniqueAssigneeIds = [...new Set(tasks.map(t => t.assignee_id))];
-			console.log(`TaskList: Number of unique assignee_ids: ${uniqueAssigneeIds.length}`);
-			console.log('TaskList: Unique assignee_ids:', uniqueAssigneeIds);
-		}
-	});
-
 	// Handle status change
 	function handleStatusChange(task: Task, newStatus: string) {
 		dispatch('updateStatus', {
 			taskId: task.id,
-			status: newStatus
+			status: newStatus,
 		});
 	}
 
@@ -65,13 +38,13 @@
 
 	function saveEdits(task: Task) {
 		if (editTitle.trim() === '') return;
-		
+
 		dispatch('update', {
 			taskId: task.id,
 			title: editTitle,
-			status: editStatus
+			status: editStatus,
 		});
-		
+
 		editingTaskId = null;
 	}
 
@@ -86,7 +59,7 @@
 	function handleAssigneeChange(task: Task, assigneeId: string | null) {
 		dispatch('assign', {
 			taskId: task.id,
-			assigneeId
+			assigneeId,
 		});
 	}
 
@@ -103,19 +76,6 @@
 				return 'bg-gray-100 text-gray-800';
 		}
 	}
-
-	// Helper function to format assignee name
-	function formatAssigneeName(task: Task): string {
-		if (!task.assignee) {
-			return 'Unassigned';
-		}
-
-		if (task.assignee.role === GROUP_MEMBER_ROLES.TEACHER) {
-			return `${task.assignee.first_name} ${task.assignee.last_name || ''}`;
-		} else {
-			return `${task.assignee.first_name} ${task.assignee.last_initial || ''}`;
-		}
-	}
 </script>
 
 <div class="task-list">
@@ -124,11 +84,9 @@
 			<span class="loading loading-spinner loading-lg"></span>
 		</div>
 	{:else if tasks.length === 0}
-		<div class="text-center py-12 bg-gray-50 rounded-lg">
-			<h3 class="text-lg font-medium text-gray-700 mb-2">No Tasks</h3>
-			<p class="text-gray-500">
-				Create your first task for this project.
-			</p>
+		<div class="rounded-lg bg-gray-50 py-12 text-center">
+			<h3 class="mb-2 text-lg font-medium text-gray-700">No Tasks</h3>
+			<p class="text-gray-500">Create your first task for this project.</p>
 		</div>
 	{:else}
 		<!-- Tasks Table -->
@@ -138,31 +96,31 @@
 					<tr>
 						<th
 							scope="col"
-							class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+							class="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
 						>
 							Task
 						</th>
 						<th
 							scope="col"
-							class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+							class="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
 						>
 							Status
 						</th>
 						<th
 							scope="col"
-							class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+							class="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
 						>
 							Assignee
 						</th>
 						<th
 							scope="col"
-							class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+							class="px-6 py-3 text-right text-xs font-medium tracking-wider text-gray-500 uppercase"
 						>
 							Actions
 						</th>
 					</tr>
 				</thead>
-				<tbody class="bg-white divide-y divide-gray-200">
+				<tbody class="divide-y divide-gray-200 bg-white">
 					{#each tasks as task (task.id)}
 						<tr>
 							<td class="px-6 py-4 whitespace-nowrap">
@@ -191,7 +149,7 @@
 									</select>
 								{:else}
 									<span
-										class={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(
+										class={`inline-flex rounded-full px-2 text-xs leading-5 font-semibold ${getStatusColor(
 											task.status
 										)}`}
 									>
@@ -201,34 +159,33 @@
 							</td>
 							<td class="px-6 py-4 whitespace-nowrap">
 								<div class="text-sm text-gray-900">
-									{formatAssigneeName(task)}
+									{#if task.assignee}
+										{task.assignee.first_name}
+										{task.assignee.last_initial || task.assignee.last_name || ''}
+									{:else}
+										<span class="text-gray-400">Unassigned</span>
+									{/if}
 								</div>
 							</td>
-							<td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+							<td class="px-6 py-4 text-right text-sm font-medium whitespace-nowrap">
 								{#if editingTaskId === task.id}
 									<button
 										on:click={() => saveEdits(task)}
-										class="text-indigo-600 hover:text-indigo-900 mr-4"
+										class="mr-4 text-indigo-600 hover:text-indigo-900"
 									>
 										Save
 									</button>
-									<button
-										on:click={cancelEditing}
-										class="text-gray-600 hover:text-gray-900"
-									>
+									<button on:click={cancelEditing} class="text-gray-600 hover:text-gray-900">
 										Cancel
 									</button>
 								{:else}
 									<button
 										on:click={() => startEditing(task)}
-										class="text-indigo-600 hover:text-indigo-900 mr-4"
+										class="mr-4 text-indigo-600 hover:text-indigo-900"
 									>
 										Edit
 									</button>
-									<button
-										on:click={() => deleteTask(task)}
-										class="text-red-600 hover:text-red-900"
-									>
+									<button on:click={() => deleteTask(task)} class="text-red-600 hover:text-red-900">
 										Delete
 									</button>
 								{/if}
@@ -237,6 +194,16 @@
 					{/each}
 				</tbody>
 			</table>
+		</div>
+
+		<!-- Kanban View Toggle Button -->
+		<div class="mt-4 text-right">
+			<button
+				class="rounded-md bg-gray-100 px-4 py-2 text-sm text-gray-700 hover:bg-gray-200"
+				disabled
+			>
+				Switch to Kanban View (Coming Soon)
+			</button>
 		</div>
 	{/if}
 </div>
