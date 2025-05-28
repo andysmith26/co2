@@ -1,114 +1,3 @@
-<!-- src/lib/components/StudentList.svelte -->
-<script lang="ts">
-	import { studentStore } from '$lib/stores/students.svelte';
-	import { onMount } from 'svelte';
-
-	// Get students from the store
-	const students = $derived(studentStore.getStudents());
-	const loading = $derived(studentStore.loading);
-	const error = $derived(studentStore.error);
-
-	// Form state
-	let firstName = $state('');
-	let lastInitial = $state('');
-	let formError = $state('');
-
-	// Load data when component mounts
-	onMount(() => {
-		studentStore.fetchStudents();
-	});
-
-	// Handle form submission
-	async function handleAddStudent() {
-		formError = '';
-
-		if (!firstName.trim()) {
-			formError = 'First name is required';
-			return;
-		}
-
-		if (!lastInitial.trim()) {
-			formError = 'Last initial is required';
-			return;
-		}
-
-		try {
-			await studentStore.addStudent(firstName, lastInitial);
-			// Reset form
-			firstName = '';
-			lastInitial = '';
-		} catch (err: any) {
-			formError = err.message;
-		}
-	}
-
-	function handleToggleStatus(studentId: string) {
-		studentStore.toggleStudentStatus(studentId);
-	}
-</script>
-
-<div class="student-list">
-	<h2>Students</h2>
-
-	{#if error}
-		<div class="error-message">
-			<p>Error: {error}</p>
-			<button on:click={() => studentStore.fetchStudents()}>Try Again</button>
-		</div>
-	{/if}
-
-	<!-- Simple Add Student Form -->
-	<div class="add-student-form">
-		<h3>Add Student</h3>
-
-		{#if formError}
-			<div class="error-message">
-				<p>{formError}</p>
-			</div>
-		{/if}
-
-		<form on:submit|preventDefault={handleAddStudent}>
-			<div class="form-group">
-				<label for="firstName">First Name</label>
-				<input type="text" id="firstName" bind:value={firstName} placeholder="Enter first name" />
-			</div>
-
-			<div class="form-group">
-				<label for="lastInitial">Last Initial</label>
-				<input
-					type="text"
-					id="lastInitial"
-					bind:value={lastInitial}
-					placeholder="Enter last initial"
-					maxlength="1"
-				/>
-			</div>
-
-			<button type="submit" class="add-button">Add Student</button>
-		</form>
-	</div>
-
-	{#if loading && !students.length}
-		<div class="loading-spinner">
-			<span>Loading students...</span>
-		</div>
-	{:else if students.length === 0}
-		<p>No students found. Add your first student using the form above.</p>
-	{:else}
-		<div class="student-grid">
-			{#each students as student (student.id)}
-				<div class="student-card {student.status === 'present' ? 'present' : 'absent'}">
-					<h3>{student.first_name} {student.last_initial}</h3>
-					<div class="status-badge">{student.status}</div>
-					<button class="toggle-button" on:click={() => handleToggleStatus(student.id)}>
-						Toggle Status
-					</button>
-				</div>
-			{/each}
-		</div>
-	{/if}
-</div>
-
 <style>
 	/* Keep your existing styles */
 	.student-list {
@@ -231,3 +120,136 @@
 		cursor: pointer;
 	}
 </style>
+
+<!-- src/lib/components/StudentList.svelte -->
+<script lang="ts">
+	import { studentStore } from '$lib/stores/students.svelte';
+	import { onMount } from 'svelte';
+
+	// Get students from the store
+	const students = $derived(studentStore.getStudents());
+	const loading = $derived(studentStore.loading);
+	const error = $derived(studentStore.error);
+
+	// Form state
+	let firstName = $state('');
+	let lastInitial = $state('');
+	let formError = $state('');
+
+	// Load data when component mounts
+	onMount(() => {
+		studentStore.fetchStudents();
+	});
+
+	// Handle form submission
+	async function handleAddStudent() {
+		console.log('🐛 DEBUG: handleAddStudent called');
+		console.log('🐛 DEBUG: Form values:', { firstName, lastInitial });
+		console.log('🐛 DEBUG: Trimmed values:', {
+			firstName: firstName.trim(),
+			lastInitial: lastInitial.trim(),
+		});
+
+		formError = '';
+
+		if (!firstName.trim()) {
+			console.log('🐛 DEBUG: Validation failed - firstName empty');
+			formError = 'First name is required';
+			return;
+		}
+
+		if (!lastInitial.trim()) {
+			console.log('🐛 DEBUG: Validation failed - lastInitial empty');
+			formError = 'Last initial is required';
+			return;
+		}
+
+		console.log('🐛 DEBUG: Validation passed, calling studentStore.addStudent');
+
+		try {
+			const result = await studentStore.addStudent(firstName, lastInitial);
+			console.log('🐛 DEBUG: studentStore.addStudent succeeded:', result);
+
+			// Reset form
+			firstName = '';
+			lastInitial = '';
+			console.log('🐛 DEBUG: Form reset');
+		} catch (err: any) {
+			console.error('🐛 DEBUG: studentStore.addStudent failed:', err);
+			console.error('🐛 DEBUG: Error details:', {
+				message: err.message,
+				stack: err.stack,
+				cause: err.cause,
+				fullError: err,
+			});
+			formError = err.message;
+		}
+	}
+
+	function handleToggleStatus(studentId: string) {
+		console.log('🐛 DEBUG: handleToggleStatus called for:', studentId);
+		studentStore.toggleStudentStatus(studentId);
+	}
+</script>
+
+<div class="student-list">
+	<h2>Students</h2>
+
+	{#if error}
+		<div class="error-message">
+			<p>Error: {error}</p>
+			<button on:click={() => studentStore.fetchStudents()}>Try Again</button>
+		</div>
+	{/if}
+
+	<!-- Simple Add Student Form -->
+	<div class="add-student-form">
+		<h3>Add Student</h3>
+
+		{#if formError}
+			<div class="error-message">
+				<p>{formError}</p>
+			</div>
+		{/if}
+
+		<form on:submit|preventDefault={handleAddStudent}>
+			<div class="form-group">
+				<label for="firstName">First Name</label>
+				<input type="text" id="firstName" bind:value={firstName} placeholder="Enter first name" />
+			</div>
+
+			<div class="form-group">
+				<label for="lastInitial">Last Initial</label>
+				<input
+					type="text"
+					id="lastInitial"
+					bind:value={lastInitial}
+					placeholder="Enter last initial"
+					maxlength="1"
+				/>
+			</div>
+
+			<button type="submit" class="add-button">Add Student</button>
+		</form>
+	</div>
+
+	{#if loading && !students.length}
+		<div class="loading-spinner">
+			<span>Loading students...</span>
+		</div>
+	{:else if students.length === 0}
+		<p>No students found. Add your first student using the form above.</p>
+	{:else}
+		<div class="student-grid">
+			{#each students as student (student.id)}
+				<div class="student-card {student.status === 'present' ? 'present' : 'absent'}">
+					<h3>{student.first_name} {student.last_initial}</h3>
+					<div class="status-badge">{student.status}</div>
+					<button class="toggle-button" on:click={() => handleToggleStatus(student.id)}>
+						Toggle Status
+					</button>
+				</div>
+			{/each}
+		</div>
+	{/if}
+</div>
