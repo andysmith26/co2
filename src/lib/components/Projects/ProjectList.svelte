@@ -2,15 +2,14 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import type { Project, Task } from '../../types';
-	import { PROJECT_STATUS } from '../../constants';
-	import TaskBadge from '$lib/components/Tasks/TaskBadge.svelte';
+	import ProjectCard from './ProjectCard.svelte';
 
 	// Props
 	const {
 		projects = [],
 		loading = false,
 		showGroupName = false,
-		tasksMap = {}, // New prop for tasks by project
+		tasksMap = {}, // Tasks by project ID
 	} = $props<{
 		projects: Project[];
 		loading?: boolean;
@@ -35,42 +34,8 @@
 	);
 
 	// Handle clicking on a project
-	function handleProjectClick(project: Project) {
-		dispatch('select', project);
-	}
-
-	// Status color mapping
-	function getStatusColor(status: string): string {
-		switch (status) {
-			case PROJECT_STATUS.ACTIVE:
-				return 'bg-green-100 text-green-800';
-			case PROJECT_STATUS.COMPLETED:
-				return 'bg-blue-100 text-blue-800';
-			case PROJECT_STATUS.ARCHIVED:
-				return 'bg-gray-100 text-gray-800';
-			default:
-				return 'bg-gray-100 text-gray-800';
-		}
-	}
-
-	// Get the most recent task for a project
-	function getMostRecentTask(projectId: string): Task | null {
-		const tasks = tasksMap[projectId] || [];
-		if (tasks.length === 0) return null;
-
-		// Sort by updated_at date (descending)
-		return [...tasks].sort(
-			(a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-		)[0];
-	}
-
-	// Calculate progress percentage for a project
-	function getProjectProgress(projectId: string): number {
-		const tasks = tasksMap[projectId] || [];
-		if (tasks.length === 0) return 0;
-
-		const completedTasks = tasks.filter((task) => task.status === 'completed').length;
-		return Math.round((completedTasks / tasks.length) * 100);
+	function handleProjectSelect(event: CustomEvent) {
+		dispatch('select', event.detail);
 	}
 </script>
 
@@ -117,89 +82,10 @@
 			</p>
 		</div>
 	{:else}
-		<!-- Projects Big Board Grid -->
+		<!-- Projects Grid with Simplified Cards -->
 		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
 			{#each filteredProjects as project (project.id)}
-				<div
-					class="relative flex h-full flex-col overflow-hidden rounded-lg bg-white shadow transition duration-150 ease-in-out hover:shadow-md"
-					role="button"
-					tabindex="0"
-					on:click={() => handleProjectClick(project)}
-					on:keydown={(e) => e.key === 'Enter' && handleProjectClick(project)}
-				>
-					<!-- Status Badge -->
-					<div class="absolute top-0 right-0 m-2">
-						<span class={`rounded-full px-2 py-1 text-xs ${getStatusColor(project.status)}`}>
-							{project.status}
-						</span>
-					</div>
-
-					<div class="flex-grow p-4">
-						<h3 class="mb-1 truncate text-lg font-medium text-gray-900" title={project.title}>
-							{project.title}
-						</h3>
-
-						{#if showGroupName && project.group_name}
-							<p class="mb-2 text-xs text-gray-500">{project.group_name}</p>
-						{/if}
-
-						{#if project.description}
-							<p class="mb-3 line-clamp-2 text-sm text-gray-500" title={project.description}>
-								{project.description}
-							</p>
-						{/if}
-
-						<!-- Task Progress -->
-						{#if tasksMap[project.id] && tasksMap[project.id].length > 0}
-							<div class="mt-2 mb-3">
-								<div class="mb-1 flex justify-between text-xs text-gray-500">
-									<span>Progress</span>
-									<span>{getProjectProgress(project.id)}%</span>
-								</div>
-								<div class="h-2 w-full rounded-full bg-gray-200">
-									<div
-										class="h-2 rounded-full bg-indigo-600"
-										style="width: {getProjectProgress(project.id)}%"
-									></div>
-								</div>
-							</div>
-						{/if}
-
-						<div class="mt-2 text-xs text-gray-400">
-							Created {new Date(project.created_at).toLocaleDateString()}
-						</div>
-					</div>
-
-					<!-- Recent Tasks Section -->
-					{#if tasksMap[project.id] && tasksMap[project.id].length > 0}
-						<div class="mt-2 px-4 pb-4">
-							<h4 class="mb-2 text-xs font-semibold tracking-wider text-gray-500 uppercase">
-								{tasksMap[project.id].length === 1
-									? 'Task'
-									: `Tasks (${tasksMap[project.id].length})`}
-							</h4>
-
-							{#if tasksMap[project.id].length === 1}
-								<!-- Single task -->
-								<TaskBadge task={tasksMap[project.id][0]} />
-							{:else if tasksMap[project.id].length > 1}
-								<!-- Most recent task -->
-								<div class="space-y-2">
-									<TaskBadge task={getMostRecentTask(project.id)} />
-									<p class="text-xs text-gray-400 italic">
-										{tasksMap[project.id].length - 1} more {tasksMap[project.id].length - 1 === 1
-											? 'task'
-											: 'tasks'}
-									</p>
-								</div>
-							{/if}
-						</div>
-					{:else}
-						<div class="mt-2 px-4 pb-4">
-							<p class="text-xs text-gray-400 italic">No tasks yet</p>
-						</div>
-					{/if}
-				</div>
+				<ProjectCard {project} tasks={tasksMap[project.id] || []} on:select={handleProjectSelect} />
 			{/each}
 		</div>
 	{/if}

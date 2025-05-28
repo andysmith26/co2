@@ -42,13 +42,31 @@ export interface Teacher {
 
 // Task type definition
 export interface Task {
-  id: number;
+  id: string;
+  project_id: string;
   title: string;
-  category: typeof TASK_CATEGORIES[keyof typeof TASK_CATEGORIES];
-  difficulty: typeof DIFFICULTY_LEVELS[keyof typeof DIFFICULTY_LEVELS];
+  description?: string | null;
   status: typeof TASK_STATUS[keyof typeof TASK_STATUS];
-  assignedTo: number[];
-  featured: boolean;
+  assignee_id?: string | null;        // For teacher assignees (ID)
+  student_assignee_id?: string | null; // For student assignees (ID)
+  assignee_type?: 'teacher' | 'student' | null; // Indicates which assignee field is being used
+  created_at: string;
+  updated_at: string;
+  
+  // Populated assignee objects (added by API)
+  assignee?: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    role: string;
+  } | null;
+  
+  student_assignee?: {
+    id: string;
+    first_name: string;
+    last_initial: string;
+    role: string;
+  } | null;
 }
 
 // View mode type
