@@ -133,31 +133,44 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
       return json({ error: 'Only teachers can create tasks' }, { status: 403 });
     }
     
-    // If any assignee is specified, verify they are a member of the group
-const assigneeId = body.assignee_id || body.student_assignee_id;
-if (assigneeId) {
-  // Determine which field to check based on assignee type
-  let filterQuery = '';
-  if (body.assignee_type === 'teacher' && body.assignee_id) {
-    filterQuery = `user_id.eq.${body.assignee_id}`;
-  } else if (body.assignee_type === 'student' && body.student_assignee_id) {
-    filterQuery = `student_id.eq.${body.student_assignee_id}`;
-  } else {
-    // If no specific type provided but an ID is, check both fields
-    filterQuery = `user_id.eq.${assigneeId},student_id.eq.${assigneeId}`;
-  }
+    // Validate assignee type and ID
+    if (body.assignee_type && (body.assignee_id || body.student_assignee_id)) {
+      let membershipQuery;
+      
+      if (body.assignee_type === 'teacher' && body.assignee_id) {
+        membershipQuery = supabase
+          .from('group_members')
+          .select('id, role')
+          .eq('group_id', project.group_id)
+          .eq('user_id', body.assignee_id)
+          .eq('role', 'teacher');
+      } else if (body.assignee_type === 'student' && body.student_assignee_id) {
+        membershipQuery = supabase
+          .from('group_members')
+          .select('id, role')
+          .eq('group_id', project.group_id)
+          .eq('student_id', body.student_assignee_id)
+          .eq('role', 'student');
+      } else {
+        return json({ error: 'Invalid assignee type or missing assignee ID' }, { status: 400 });
+      }
 
-  // Check if the assignee is in the group
-  const { data: groupMembers, error: membersError } = await supabase
-    .from('group_members')
-    .select('id, role, user_id, student_id')
-    .eq('group_id', project.group_id)
-    .or(filterQuery);
-    
-  if (membersError || groupMembers.length === 0) {
-    return json({ error: 'Assignee is not a member of this group' }, { status: 400 });
-  }
-}
+      const { data: memberCheck, error: memberError } = await membershipQuery.single();
+      
+      if (memberError || !memberCheck) {
+        const assigneeType = body.assignee_type === 'teacher' ? 'Teacher' : 'Student';
+        console.error(`${assigneeType} membership validation failed:`, {
+          assignee_type: body.assignee_type,
+          assignee_id: body.assignee_id,
+          student_assignee_id: body.student_assignee_id,
+          group_id: project.group_id,
+          error: memberError
+        });
+        return json({ 
+          error: `${assigneeType} is not a member of this group` 
+        }, { status: 400 });
+      }
+    }
     
     // Insert the new task
     const { data, error } = await supabase

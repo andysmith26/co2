@@ -75,11 +75,14 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
       updates.assignee_type = body.assignee_type;
     }
     
-    // Get project's group_id for validation
-    let groupId: string | null = null;
+    // FIXED: Improved assignee validation for updates
+    let needsValidation = false;
+    let validationData = null;
+    
+    // Get project's group_id for validation if we're updating assignees
     if ((body.assignee_id !== undefined || body.student_assignee_id !== undefined) && 
         (body.assignee_id || body.student_assignee_id)) {
-      // Get the project to find the group
+      
       const { data: project, error: projectError } = await supabase
         .from('projects')
         .select('group_id')
@@ -90,22 +93,28 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
         return json({ error: 'Project not found' }, { status: 404 });
       }
       
-      groupId = project.group_id;
+      needsValidation = true;
+      validationData = { groupId: project.group_id };
     }
     
     // Handle teacher assignee
     if (body.assignee_id !== undefined) {
       // If assignee is specified, verify they are a member of the group
-      if (body.assignee_id && groupId) {
-        // Check if teacher is a member of the group
-        const { data: assigneeMember, error: assigneeError } = await supabase
+      if (body.assignee_id && needsValidation) {
+        const { data: memberCheck, error: memberError } = await supabase
           .from('group_members')
-          .select('id')
-          .eq('group_id', groupId)
+          .select('id, role')
+          .eq('group_id', validationData.groupId)
           .eq('user_id', body.assignee_id)
+          .eq('role', 'teacher')
           .single();
           
-        if (assigneeError || !assigneeMember) {
+        if (memberError || !memberCheck) {
+          console.error('Teacher membership validation failed:', {
+            assignee_id: body.assignee_id,
+            group_id: validationData.groupId,
+            error: memberError
+          });
           return json({ error: 'Teacher assignee is not a member of this group' }, { status: 400 });
         }
       }
@@ -121,16 +130,21 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
     // Handle student assignee
     if (body.student_assignee_id !== undefined) {
       // If student assignee is specified, verify they are a member of the group
-      if (body.student_assignee_id && groupId) {
-        // Check if student is a member of the group
-        const { data: studentMember, error: studentError } = await supabase
+      if (body.student_assignee_id && needsValidation) {
+        const { data: memberCheck, error: memberError } = await supabase
           .from('group_members')
-          .select('id')
-          .eq('group_id', groupId)
+          .select('id, role')
+          .eq('group_id', validationData.groupId)
           .eq('student_id', body.student_assignee_id)
+          .eq('role', 'student')
           .single();
           
-        if (studentError || !studentMember) {
+        if (memberError || !memberCheck) {
+          console.error('Student membership validation failed:', {
+            student_assignee_id: body.student_assignee_id,
+            group_id: validationData.groupId,
+            error: memberError
+          });
           return json({ error: 'Student assignee is not a member of this group' }, { status: 400 });
         }
       }

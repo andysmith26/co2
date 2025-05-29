@@ -12,7 +12,7 @@
 	let selectedGroupId = $state('');
 	let error = $state<string | null>(null);
 	let refreshInterval = $state<number | null>(null);
-	let autoRefresh = $state(true);
+	let autoRefresh = $state(false); // DISABLED BY DEFAULT
 
 	// Get stores data with $derived
 	const projects = $derived(projectStore.projects);
@@ -22,17 +22,11 @@
 	const groups = $derived(groupStore.groups);
 	const groupsLoading = $derived(groupStore.loading);
 
-	// Initialize data - MODIFIED
+	// FIXED: Much simpler initialization - no auto-refresh loops
 	$effect.root(() => {
-		// One-time initialization that won't react to store changes
+		// One-time data load
 		groupStore.fetchGroups();
-
-		// Set up auto-refresh every 30 seconds
-		if (autoRefresh && !refreshInterval) {
-			refreshInterval = setInterval(() => {
-				projectStore.fetchProjects();
-			}, 30000) as unknown as number;
-		}
+		projectStore.fetchProjects();
 
 		// Clean up interval when component is destroyed
 		return () => {
@@ -43,22 +37,10 @@
 		};
 	});
 
-	// Initial data load once - separate from the auto-refresh
-	$effect.root(() => {
-		// Initial load of projects
-		if (selectedGroupId) {
-			projectStore.fetchProjectsByGroup(selectedGroupId);
-		} else {
-			projectStore.fetchProjects();
-		}
-	});
-
 	// When group selection changes, fetch projects for that group
 	$effect(() => {
-		const currentGroupId = selectedGroupId; // Capture the current value
-
-		if (currentGroupId) {
-			projectStore.fetchProjectsByGroup(currentGroupId);
+		if (selectedGroupId) {
+			projectStore.fetchProjectsByGroup(selectedGroupId);
 		} else {
 			projectStore.fetchProjects();
 		}
@@ -93,9 +75,11 @@
 	function toggleAutoRefresh() {
 		autoRefresh = !autoRefresh;
 		if (autoRefresh) {
+			// Set to 30 seconds, not every few seconds
 			refreshInterval = setInterval(() => {
+				console.log('Auto-refreshing projects...');
 				projectStore.fetchProjects();
-			}, 30000) as unknown as number;
+			}, 30000) as unknown as number; // 30 seconds
 		} else if (refreshInterval) {
 			clearInterval(refreshInterval);
 			refreshInterval = null;
@@ -160,7 +144,7 @@
 						checked={autoRefresh}
 						on:change={toggleAutoRefresh}
 					/>
-					<span class="text-xs text-gray-500">Auto-refresh</span>
+					<span class="text-xs text-gray-500">Auto-refresh (30s)</span>
 				</label>
 			</div>
 

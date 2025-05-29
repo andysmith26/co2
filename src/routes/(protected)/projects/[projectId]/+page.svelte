@@ -98,11 +98,21 @@
 		}
 	}
 
-	// Event handlers for tasks
+	// FIXED: Event handlers for tasks
 	async function handleCreateTask(event: CustomEvent) {
 		try {
 			const { title, description, assigneeId, assigneeType, status } = event.detail;
-			await taskStore.createTask(projectId, title, assigneeId, description, assigneeType);
+
+			console.log('🐛 PROJECT PAGE: Received task creation event:', {
+				title,
+				description,
+				assigneeId,
+				assigneeType,
+				status,
+			});
+
+			// FIXED: Pass assigneeType properly to the task store
+			await taskStore.createTask(projectId, title, assigneeId, assigneeType, description);
 		} catch (err) {
 			console.error('Error creating task:', err);
 			if (err instanceof Error) {
@@ -116,6 +126,7 @@
 	async function handleUpdateTask(event: CustomEvent) {
 		try {
 			const { taskId, title, status } = event.detail;
+			console.log('🐛 PROJECT PAGE: Updating task:', { taskId, title, status });
 			await taskStore.updateTask(projectId, taskId, { title, status });
 		} catch (err) {
 			console.error('Error updating task:', err);
@@ -130,6 +141,7 @@
 	async function handleTaskStatusChange(event: CustomEvent) {
 		try {
 			const { taskId, status } = event.detail;
+			console.log('🐛 PROJECT PAGE: Changing task status:', { taskId, status });
 			await taskStore.updateTaskStatus(projectId, taskId, status);
 		} catch (err) {
 			console.error('Error updating task status:', err);
@@ -144,6 +156,7 @@
 	async function handleTaskAssignment(event: CustomEvent) {
 		try {
 			const { taskId, assigneeId, assigneeType } = event.detail;
+			console.log('🐛 PROJECT PAGE: Assigning task:', { taskId, assigneeId, assigneeType });
 			await taskStore.assignTask(projectId, taskId, assigneeId, assigneeType);
 		} catch (err) {
 			console.error('Error assigning task:', err);
@@ -158,6 +171,7 @@
 	async function handleDeleteTask(event: CustomEvent) {
 		try {
 			const { taskId } = event.detail;
+			console.log('🐛 PROJECT PAGE: Deleting task:', { taskId });
 			await taskStore.deleteTask(projectId, taskId);
 		} catch (err) {
 			console.error('Error deleting task:', err);

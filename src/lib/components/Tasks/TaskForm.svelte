@@ -2,7 +2,7 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import type { Task } from '../../types';
-	import { TASK_STATUS } from '../../constants';
+	import { TASK_STATUS, GROUP_MEMBER_ROLES } from '../../constants';
 
 	// Props
 	const {
@@ -33,6 +33,53 @@
 	// Events
 	const dispatch = createEventDispatcher();
 
+	// Debug logging - ADD THIS TO SEE WHAT'S HAPPENING
+	$effect(() => {
+		console.log('🐛 TaskForm DEBUG:');
+		console.log('- projectId:', projectId);
+		console.log('- groupMembers:', groupMembers);
+		console.log('- groupMembers length:', groupMembers?.length);
+		console.log('- groupMembers type:', typeof groupMembers);
+		console.log('- groupMembers isArray:', Array.isArray(groupMembers));
+
+		if (groupMembers && Array.isArray(groupMembers)) {
+			const students = groupMembers.filter((m) => m.role === GROUP_MEMBER_ROLES.STUDENT);
+			const teachers = groupMembers.filter((m) => m.role === GROUP_MEMBER_ROLES.TEACHER);
+
+			console.log('- students in groupMembers:', students);
+			console.log('- teachers in groupMembers:', teachers);
+			console.log('- student count:', students.length);
+			console.log('- teacher count:', teachers.length);
+
+			// Log the structure of the first student and teacher if they exist
+			if (students.length > 0) {
+				console.log('- first student structure:', students[0]);
+				console.log('- first student has student_id?', !!students[0].student_id);
+				console.log('- first student has user_id?', !!students[0].user_id);
+			}
+			if (teachers.length > 0) {
+				console.log('- first teacher structure:', teachers[0]);
+				console.log('- first teacher has user_id?', !!teachers[0].user_id);
+				console.log('- first teacher has student_id?', !!teachers[0].student_id);
+			}
+		}
+	});
+
+	// Helper functions to get available assignees
+	function getTeacherOptions() {
+		if (!groupMembers || !Array.isArray(groupMembers)) return [];
+		return groupMembers.filter(
+			(member) => member.role === GROUP_MEMBER_ROLES.TEACHER && member.user_id
+		);
+	}
+
+	function getStudentOptions() {
+		if (!groupMembers || !Array.isArray(groupMembers)) return [];
+		return groupMembers.filter(
+			(member) => member.role === GROUP_MEMBER_ROLES.STUDENT && member.student_id
+		);
+	}
+
 	// Methods
 	function validateForm() {
 		error = null;
@@ -50,6 +97,11 @@
 		isSubmitting = true;
 
 		try {
+			console.log('🐛 TaskForm SUBMIT DEBUG:');
+			console.log('- assigneeId:', assigneeId);
+			console.log('- assigneeType:', assigneeType);
+			console.log('- title:', title);
+
 			await dispatch('submit', {
 				projectId,
 				taskId: initialTask?.id,
@@ -126,6 +178,8 @@
 					id="task-assignee"
 					on:change={(e) => {
 						const selectedValue = e.currentTarget.value;
+						console.log('🐛 Assignee selection changed to:', selectedValue);
+
 						if (selectedValue === 'null') {
 							assigneeId = null;
 							assigneeType = null;
@@ -134,25 +188,46 @@
 							const [type, id] = selectedValue.split(':');
 							assigneeId = id;
 							assigneeType = type as 'teacher' | 'student';
+							console.log('🐛 Parsed assignee:', { assigneeId, assigneeType });
 						}
 					}}
 					class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
 					value={assigneeId && assigneeType ? `${assigneeType}:${assigneeId}` : 'null'}
 				>
 					<option value="null">Unassigned</option>
-					{#each groupMembers as member}
-						{#if member.user_id}
-							<option value={`teacher:${member.user_id}`}>
-								{member.first_name}
-								{member.last_name || ''} (Teacher)
-							</option>
-						{:else if member.student_id}
-							<option value={`student:${member.student_id}`}>
-								{member.first_name}
-								{member.last_initial || ''} (Student)
-							</option>
-						{/if}
-					{/each}
+
+					<!-- Debug: Show what we're working with -->
+					{#if getTeacherOptions().length === 0 && getStudentOptions().length === 0}
+						<option disabled>No group members available</option>
+					{/if}
+
+					<!-- Teachers -->
+					{#if getTeacherOptions().length > 0}
+						<optgroup label="Teachers ({getTeacherOptions().length})">
+							{#each getTeacherOptions() as teacher}
+								<option value={`teacher:${teacher.user_id}`}>
+									{teacher.first_name}
+									{teacher.last_name || ''} (Teacher)
+								</option>
+							{/each}
+						</optgroup>
+					{/if}
+
+					<!-- Students -->
+					{#if getStudentOptions().length > 0}
+						<optgroup label="Students ({getStudentOptions().length})">
+							{#each getStudentOptions() as student}
+								<option value={`student:${student.student_id}`}>
+									{student.first_name}
+									{student.last_initial || ''} (Student)
+								</option>
+							{/each}
+						</optgroup>
+					{:else}
+						<optgroup label="Students">
+							<option disabled>No students in this group</option>
+						</optgroup>
+					{/if}
 				</select>
 			</div>
 

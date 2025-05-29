@@ -19,6 +19,7 @@ class TaskStore {
     this.currentProjectId = projectId;
     
     try {
+      console.log('🐛 TASK STORE: Fetching tasks for project:', projectId);
       const response = await fetch(`/api/projects/${projectId}/tasks`);
       
       if (!response.ok) {
@@ -27,6 +28,7 @@ class TaskStore {
       }
       
       const data = await response.json();
+      console.log('🐛 TASK STORE: Received tasks:', data);
       this.tasks = data || [];
     } catch (err: any) {
       console.error('Error fetching tasks:', err);
@@ -54,6 +56,14 @@ class TaskStore {
         throw new Error('Task title is required');
       }
       
+      console.log('🐛 TASK STORE: Creating task with:', {
+        projectId,
+        title,
+        assigneeId,
+        assigneeType,
+        description
+      });
+      
       // Determine which assignee fields to send based on assignee type
       let assigneeData: {
         assignee_id?: string | null;
@@ -76,6 +86,8 @@ class TaskStore {
         assigneeData.assignee_type = null;
       }
       
+      console.log('🐛 TASK STORE: Sending assignee data:', assigneeData);
+      
       const response = await fetch(`/api/projects/${projectId}/tasks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -88,13 +100,21 @@ class TaskStore {
       
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('🐛 TASK STORE: Create task failed:', errorData);
         throw new Error(errorData.error || 'Failed to create task');
       }
       
       const newTask = await response.json();
+      console.log('🐛 TASK STORE: Created task:', newTask);
       
       // Update local state
       this.tasks = [...this.tasks, newTask];
+      
+      // Refresh tasks to get complete assignee information
+      setTimeout(() => {
+        this.fetchTasksForProject(projectId);
+      }, 500);
+      
       return newTask;
     } catch (err: any) {
       console.error('Error creating task:', err);
@@ -115,6 +135,8 @@ class TaskStore {
         throw new Error('Task title is required');
       }
       
+      console.log('🐛 TASK STORE: Updating task:', taskId, 'with:', updates);
+      
       const response = await fetch(`/api/projects/${projectId}/tasks/${taskId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -123,15 +145,22 @@ class TaskStore {
       
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('🐛 TASK STORE: Update task failed:', errorData);
         throw new Error(errorData.error || 'Failed to update task');
       }
       
       const updatedTask = await response.json();
+      console.log('🐛 TASK STORE: Updated task:', updatedTask);
       
       // Update local state
       this.tasks = this.tasks.map(task => 
         task.id === taskId ? updatedTask : task
       );
+      
+      // Refresh tasks to get complete assignee information
+      setTimeout(() => {
+        this.fetchTasksForProject(projectId);
+      }, 500);
       
       return updatedTask;
     } catch (err: any) {
@@ -175,7 +204,13 @@ class TaskStore {
   }
   
   async assignTask(projectId: string, taskId: string, assigneeId: string | null, assigneeType: 'teacher' | 'student' | null = null) {
-    const updates: Partial<Task> = { assignee_type: assigneeType };
+    console.log('🐛 TASK STORE: Assigning task:', {
+      taskId,
+      assigneeId,
+      assigneeType
+    });
+    
+    const updates: any = { assignee_type: assigneeType };
     
     if (assigneeType === 'teacher') {
       updates.assignee_id = assigneeId;
