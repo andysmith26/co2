@@ -115,9 +115,8 @@ function draw() {
 
 **What you're learning:** Physics simulation, velocity, and gravity
 
-### Code to ADD (add these properties to the char object):
+### Code to ADD (add two more properties to the char object):
 ```javascript
-// Character properties - REPLACE the entire char object
 let char = {
     x: 200,
     y: 245,
