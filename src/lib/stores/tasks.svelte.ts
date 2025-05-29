@@ -19,19 +19,33 @@ class TaskStore {
     this.currentProjectId = projectId;
     
     try {
-      console.log('🐛 TASK STORE: Fetching tasks for project:', projectId);
+      console.log('🔄 TASK STORE: Fetching tasks for project:', projectId);
       const response = await fetch(`/api/projects/${projectId}/tasks`);
       
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('❌ TASK STORE: Fetch failed:', errorData);
         throw new Error(errorData.error || 'Failed to fetch tasks');
       }
       
       const data = await response.json();
-      console.log('🐛 TASK STORE: Received tasks:', data);
+      console.log('✅ TASK STORE: Received', data?.length || 0, 'tasks');
       this.tasks = data || [];
+      
+      // Enhanced logging for task structure
+      if (data && data.length > 0) {
+        console.log('🔍 TASK STORE: First task structure:', {
+          id: data[0].id,
+          title: data[0].title,
+          assignee_type: data[0].assignee_type,
+          assignee_id: data[0].assignee_id,
+          student_assignee_id: data[0].student_assignee_id,
+          hasAssignee: !!data[0].assignee,
+          hasStudentAssignee: !!data[0].student_assignee
+        });
+      }
     } catch (err: any) {
-      console.error('Error fetching tasks:', err);
+      console.error('❌ TASK STORE: Error fetching tasks:', err);
       this.error = err.message;
     } finally {
       this.loading = false;
@@ -56,13 +70,12 @@ class TaskStore {
         throw new Error('Task title is required');
       }
       
-      console.log('🐛 TASK STORE: Creating task with:', {
-        projectId,
-        title,
-        assigneeId,
-        assigneeType,
-        description
-      });
+      console.log('🔄 TASK STORE: Creating task with enhanced logging:');
+      console.log('- projectId:', projectId);
+      console.log('- title:', title);
+      console.log('- assigneeId:', assigneeId);
+      console.log('- assigneeType:', assigneeType);
+      console.log('- description:', description?.substring(0, 50) + '...');
       
       // Determine which assignee fields to send based on assignee type
       let assigneeData: {
@@ -76,48 +89,64 @@ class TaskStore {
       if (assigneeType === 'teacher' && assigneeId) {
         assigneeData.assignee_id = assigneeId;
         assigneeData.student_assignee_id = null;
+        console.log('- Setting teacher assignee:', assigneeId);
       } else if (assigneeType === 'student' && assigneeId) {
         assigneeData.student_assignee_id = assigneeId;
         assigneeData.assignee_id = null;
+        console.log('- Setting student assignee:', assigneeId);
       } else {
         // No assignee or invalid type
         assigneeData.assignee_id = null;
         assigneeData.student_assignee_id = null;
         assigneeData.assignee_type = null;
+        console.log('- No assignee set');
       }
       
-      console.log('🐛 TASK STORE: Sending assignee data:', assigneeData);
+      const requestBody = {
+        title,
+        ...assigneeData,
+        description
+      };
+      
+      console.log('- Request body:', requestBody);
       
       const response = await fetch(`/api/projects/${projectId}/tasks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title,
-          ...assigneeData,
-          description
-        })
+        body: JSON.stringify(requestBody)
       });
       
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('🐛 TASK STORE: Create task failed:', errorData);
+        console.error('❌ TASK STORE: Create task failed:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorData
+        });
         throw new Error(errorData.error || 'Failed to create task');
       }
       
       const newTask = await response.json();
-      console.log('🐛 TASK STORE: Created task:', newTask);
+      console.log('✅ TASK STORE: Created task successfully:', {
+        id: newTask.id,
+        title: newTask.title,
+        assignee_type: newTask.assignee_type,
+        assignee_id: newTask.assignee_id,
+        student_assignee_id: newTask.student_assignee_id
+      });
       
       // Update local state
       this.tasks = [...this.tasks, newTask];
       
       // Refresh tasks to get complete assignee information
       setTimeout(() => {
+        console.log('🔄 TASK STORE: Refreshing tasks to get complete assignee info');
         this.fetchTasksForProject(projectId);
       }, 500);
       
       return newTask;
     } catch (err: any) {
-      console.error('Error creating task:', err);
+      console.error('❌ TASK STORE: Error creating task:', err);
       this.error = err.message;
       throw err;
     } finally {
@@ -135,7 +164,27 @@ class TaskStore {
         throw new Error('Task title is required');
       }
       
-      console.log('🐛 TASK STORE: Updating task:', taskId, 'with:', updates);
+      console.log('🔄 TASK STORE: Updating task with enhanced logging:');
+      console.log('- projectId:', projectId);
+      console.log('- taskId:', taskId);
+      console.log('- updates:', updates);
+      
+      // Enhanced logging for assignment updates
+      if (updates.assignee_id !== undefined || updates.student_assignee_id !== undefined || updates.assignee_type !== undefined) {
+        console.log('- Assignment update detected:');
+        console.log('  - assignee_type:', updates.assignee_type);
+        console.log('  - assignee_id:', updates.assignee_id);
+        console.log('  - student_assignee_id:', updates.student_assignee_id);
+        
+        // Find the current task for comparison
+        const currentTask = this.getTaskById(taskId);
+        if (currentTask) {
+          console.log('- Current task assignment:');
+          console.log('  - current assignee_type:', currentTask.assignee_type);
+          console.log('  - current assignee_id:', currentTask.assignee_id);
+          console.log('  - current student_assignee_id:', currentTask.student_assignee_id);
+        }
+      }
       
       const response = await fetch(`/api/projects/${projectId}/tasks/${taskId}`, {
         method: 'PUT',
@@ -145,12 +194,23 @@ class TaskStore {
       
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('🐛 TASK STORE: Update task failed:', errorData);
+        console.error('❌ TASK STORE: Update task failed:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorData,
+          requestBody: updates
+        });
         throw new Error(errorData.error || 'Failed to update task');
       }
       
       const updatedTask = await response.json();
-      console.log('🐛 TASK STORE: Updated task:', updatedTask);
+      console.log('✅ TASK STORE: Updated task successfully:', {
+        id: updatedTask.id,
+        title: updatedTask.title,
+        assignee_type: updatedTask.assignee_type,
+        assignee_id: updatedTask.assignee_id,
+        student_assignee_id: updatedTask.student_assignee_id
+      });
       
       // Update local state
       this.tasks = this.tasks.map(task => 
@@ -159,12 +219,13 @@ class TaskStore {
       
       // Refresh tasks to get complete assignee information
       setTimeout(() => {
+        console.log('🔄 TASK STORE: Refreshing tasks to get complete assignee info');
         this.fetchTasksForProject(projectId);
       }, 500);
       
       return updatedTask;
     } catch (err: any) {
-      console.error('Error updating task:', err);
+      console.error('❌ TASK STORE: Error updating task:', err);
       this.error = err.message;
       throw err;
     } finally {
@@ -177,21 +238,26 @@ class TaskStore {
     this.error = null;
     
     try {
+      console.log('🔄 TASK STORE: Deleting task:', taskId);
+      
       const response = await fetch(`/api/projects/${projectId}/tasks/${taskId}`, {
         method: 'DELETE'
       });
       
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('❌ TASK STORE: Delete task failed:', errorData);
         throw new Error(errorData.error || 'Failed to delete task');
       }
+      
+      console.log('✅ TASK STORE: Deleted task successfully');
       
       // Update local state
       this.tasks = this.tasks.filter(task => task.id !== taskId);
       
       return true;
     } catch (err: any) {
-      console.error('Error deleting task:', err);
+      console.error('❌ TASK STORE: Error deleting task:', err);
       this.error = err.message;
       throw err;
     } finally {
@@ -200,32 +266,13 @@ class TaskStore {
   }
   
   async updateTaskStatus(projectId: string, taskId: string, status: string) {
+    console.log('🔄 TASK STORE: Updating task status:', { taskId, status });
     return this.updateTask(projectId, taskId, { status });
   }
   
-  async assignTask(projectId: string, taskId: string, assigneeId: string | null, assigneeType: 'teacher' | 'student' | null = null) {
-    console.log('🐛 TASK STORE: Assigning task:', {
-      taskId,
-      assigneeId,
-      assigneeType
-    });
-    
-    const updates: any = { assignee_type: assigneeType };
-    
-    if (assigneeType === 'teacher') {
-      updates.assignee_id = assigneeId;
-      updates.student_assignee_id = null;
-    } else if (assigneeType === 'student') {
-      updates.student_assignee_id = assigneeId;
-      updates.assignee_id = null;
-    } else {
-      // No assignee or unspecified type
-      updates.assignee_id = null;
-      updates.student_assignee_id = null;
-    }
-    
-    return this.updateTask(projectId, taskId, updates);
-  }
+  // REMOVED: The problematic assignTask method that was causing the error
+  // Assignment changes should only happen through the main updateTask method
+  // or during task creation in the TaskForm component
 }
 
 // Create and export a single instance

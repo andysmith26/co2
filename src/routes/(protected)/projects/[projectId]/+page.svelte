@@ -28,6 +28,25 @@
 	const tasksLoading = $derived(taskStore.loading);
 	const groupLoading = $derived(groupStore.membersLoading);
 
+	// Enhanced logging for debugging
+	$effect(() => {
+		console.log('🔍 PROJECT PAGE: Current state:', {
+			projectId,
+			hasProject: !!project,
+			tasksCount: tasks.length,
+			groupMembersCount: groupMembers.length,
+			isInitialized,
+		});
+
+		if (groupMembers.length > 0) {
+			console.log('🔍 PROJECT PAGE: Group members breakdown:', {
+				total: groupMembers.length,
+				teachers: groupMembers.filter((m) => m.role === 'teacher').length,
+				students: groupMembers.filter((m) => m.role === 'student').length,
+			});
+		}
+	});
+
 	// FIXED: Simple one-time data loading on mount
 	onMount(async () => {
 		if (!projectId) {
@@ -55,6 +74,8 @@
 				throw new Error('Project not found');
 			}
 
+			console.log('✅ Project found:', currentProject.title);
+
 			// Load related data in parallel
 			await Promise.all([
 				taskStore.fetchTasksForProject(projectId),
@@ -64,7 +85,7 @@
 			isInitialized = true;
 			console.log('✅ Project data loaded successfully');
 		} catch (err) {
-			console.error('Error loading project data:', err);
+			console.error('❌ Error loading project data:', err);
 			if (err instanceof Error) {
 				error = err.message;
 			} else {
@@ -73,17 +94,15 @@
 		}
 	}
 
-	// FIXED: Remove reactive effect that was causing constant reloads
-	// The original $effect(() => { if (projectId) loadProjectData(); }) was problematic
-
 	// Event handlers for project
 	async function handleUpdateProject(event: CustomEvent) {
 		try {
 			const { title, description } = event.detail;
+			console.log('🔄 Updating project:', { title, description });
 			await projectStore.updateProject(projectId, title, description);
 			isEditing = false;
 		} catch (err) {
-			console.error('Error updating project:', err);
+			console.error('❌ Error updating project:', err);
 			if (err instanceof Error) {
 				error = err.message;
 			} else {
@@ -98,10 +117,11 @@
 
 	async function handleDeleteProject() {
 		try {
+			console.log('🔄 Deleting project:', projectId);
 			await projectStore.deleteProject(projectId);
 			goto('/projects');
 		} catch (err) {
-			console.error('Error deleting project:', err);
+			console.error('❌ Error deleting project:', err);
 			if (err instanceof Error) {
 				error = err.message;
 			} else {
@@ -118,7 +138,7 @@
 
 			console.log('🔄 Creating task:', {
 				title,
-				description,
+				description: description?.substring(0, 30) + '...',
 				assigneeId,
 				assigneeType,
 				status,
@@ -126,7 +146,7 @@
 
 			await taskStore.createTask(projectId, title, assigneeId, assigneeType, description);
 		} catch (err) {
-			console.error('Error creating task:', err);
+			console.error('❌ Error creating task:', err);
 			if (err instanceof Error) {
 				error = err.message;
 			} else {
@@ -141,7 +161,7 @@
 			console.log('🔄 Updating task:', { taskId, title, status });
 			await taskStore.updateTask(projectId, taskId, { title, status });
 		} catch (err) {
-			console.error('Error updating task:', err);
+			console.error('❌ Error updating task:', err);
 			if (err instanceof Error) {
 				error = err.message;
 			} else {
@@ -156,7 +176,7 @@
 			console.log('🔄 Changing task status:', { taskId, status });
 			await taskStore.updateTaskStatus(projectId, taskId, status);
 		} catch (err) {
-			console.error('Error updating task status:', err);
+			console.error('❌ Error updating task status:', err);
 			if (err instanceof Error) {
 				error = err.message;
 			} else {
@@ -165,20 +185,7 @@
 		}
 	}
 
-	async function handleTaskAssignment(event: CustomEvent) {
-		try {
-			const { taskId, assigneeId, assigneeType } = event.detail;
-			console.log('🔄 Assigning task:', { taskId, assigneeId, assigneeType });
-			await taskStore.assignTask(projectId, taskId, assigneeId, assigneeType);
-		} catch (err) {
-			console.error('Error assigning task:', err);
-			if (err instanceof Error) {
-				error = err.message;
-			} else {
-				error = 'Failed to assign task';
-			}
-		}
-	}
+	// REMOVED: handleTaskAssignment - assignments should only be done during task creation/editing
 
 	async function handleDeleteTask(event: CustomEvent) {
 		try {
@@ -186,7 +193,7 @@
 			console.log('🔄 Deleting task:', { taskId });
 			await taskStore.deleteTask(projectId, taskId);
 		} catch (err) {
-			console.error('Error deleting task:', err);
+			console.error('❌ Error deleting task:', err);
 			if (err instanceof Error) {
 				error = err.message;
 			} else {
@@ -344,7 +351,7 @@
 							<TaskForm {projectId} {groupMembers} on:submit={handleCreateTask} />
 						</div>
 
-						<!-- Task List -->
+						<!-- Task List - SIMPLIFIED: No more assignment editing -->
 						<div class="mt-6">
 							<TaskList
 								{tasks}
@@ -352,7 +359,6 @@
 								{groupMembers}
 								on:updateStatus={handleTaskStatusChange}
 								on:update={handleUpdateTask}
-								on:assign={handleTaskAssignment}
 								on:delete={handleDeleteTask}
 							/>
 						</div>
@@ -380,6 +386,13 @@
 									Loading group information...
 								{:else}
 									Group ID: {project.group_id}
+									{#if groupMembers.length > 0}
+										<br />
+										<span class="text-xs text-gray-400">
+											{groupMembers.filter((m) => m.role === 'teacher').length} teachers,
+											{groupMembers.filter((m) => m.role === 'student').length} students
+										</span>
+									{/if}
 								{/if}
 							</p>
 						</div>
@@ -388,6 +401,30 @@
 							<h3 class="text-sm font-medium text-gray-500">Last Updated</h3>
 							<p class="mt-1">{new Date(project.updated_at).toLocaleString()}</p>
 						</div>
+
+						<div>
+							<h3 class="text-sm font-medium text-gray-500">Tasks Summary</h3>
+							<p class="mt-1">
+								{tasks.length} total tasks
+								{#if tasks.length > 0}
+									<br />
+									<span class="text-xs text-gray-400">
+										{tasks.filter((t) => t.status === 'completed').length} completed,
+										{tasks.filter((t) => t.status === 'in-progress').length} in progress,
+										{tasks.filter((t) => t.status === 'todo').length} to do
+									</span>
+								{/if}
+							</p>
+						</div>
+					</div>
+
+					<div class="mt-6 rounded-lg bg-blue-50 p-4">
+						<h4 class="text-sm font-medium text-blue-900">💡 Assignment Tips</h4>
+						<ul class="mt-2 text-sm text-blue-800">
+							<li>• Create tasks with assignments using the form above</li>
+							<li>• Use quick status buttons (📝🔄✅) to update progress</li>
+							<li>• To change assignments, create a new task or edit existing ones</li>
+						</ul>
 					</div>
 				</div>
 			{/if}

@@ -1,3 +1,4 @@
+<!-- src/lib/components/Tasks/TaskList.svelte -->
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import type { Task } from '../../types';
@@ -11,44 +12,31 @@
 	} = $props<{
 		tasks: Task[];
 		loading?: boolean;
-		groupMembers?: any[]; // Use the correct type based on your application
+		groupMembers?: any[];
 	}>();
 
 	// Events
 	const dispatch = createEventDispatcher();
 
-	// Local state
+	// Local state - simplified, no more inline editing
 	let editingTaskId = $state<string | null>(null);
 	let editTitle = $state('');
 	let editStatus = $state('');
-	let editingAssigneeTaskId = $state<string | null>(null);
 
-	// Handle status change
+	// Handle status change - this is the main interaction we keep
 	function handleStatusChange(task: Task, newStatus: string) {
+		console.log('🔄 TaskList: Status change for task', task.id, 'to', newStatus);
 		dispatch('updateStatus', {
 			taskId: task.id,
 			status: newStatus,
 		});
 	}
 
-	// Helper functions to get available assignees
-	function getTeacherOptions() {
-		return groupMembers.filter((member) => member.role === GROUP_MEMBER_ROLES.TEACHER);
-	}
-
-	function getStudentOptions() {
-		return groupMembers.filter((member) => member.role === GROUP_MEMBER_ROLES.STUDENT);
-	}
-
-	// Handle edit task
+	// Simplified edit - title and status only
 	function startEditing(task: Task) {
 		editingTaskId = task.id;
 		editTitle = task.title;
 		editStatus = task.status;
-	}
-
-	function startEditingAssignee(task: Task) {
-		editingTaskId = task.id;
 	}
 
 	function cancelEditing() {
@@ -58,6 +46,7 @@
 	function saveEdits(task: Task) {
 		if (editTitle.trim() === '') return;
 
+		console.log('🔄 TaskList: Saving edits for task', task.id);
 		dispatch('update', {
 			taskId: task.id,
 			title: editTitle,
@@ -70,21 +59,9 @@
 	// Handle delete task
 	function deleteTask(task: Task) {
 		if (confirm('Are you sure you want to delete this task?')) {
+			console.log('🔄 TaskList: Deleting task', task.id);
 			dispatch('delete', { taskId: task.id });
 		}
-	}
-
-	// Handle assignee selection
-	function handleAssigneeChange(
-		task: Task,
-		assigneeId: string | null,
-		assigneeType: 'teacher' | 'student' | null = null
-	) {
-		dispatch('assign', {
-			taskId: task.id,
-			assigneeId,
-			assigneeType,
-		});
 	}
 
 	// Status color mapping
@@ -100,6 +77,16 @@
 				return 'bg-gray-100 text-gray-800';
 		}
 	}
+
+	// Helper to display assignee info
+	function getAssigneeDisplay(task: Task): string {
+		if (task.assignee_type === 'teacher' && task.assignee) {
+			return `${task.assignee.first_name} ${task.assignee.last_name || ''} (Teacher)`;
+		} else if (task.assignee_type === 'student' && task.student_assignee) {
+			return `${task.student_assignee.first_name} ${task.student_assignee.last_initial || ''} (Student)`;
+		}
+		return 'Unassigned';
+	}
 </script>
 
 <div class="task-list">
@@ -113,7 +100,7 @@
 			<p class="text-gray-500">Create your first task for this project.</p>
 		</div>
 	{:else}
-		<!-- Tasks Table -->
+		<!-- Simplified Tasks Table -->
 		<div class="overflow-x-auto">
 			<table class="min-w-full divide-y divide-gray-200">
 				<thead class="bg-gray-50">
@@ -172,79 +159,53 @@
 										<option value={TASK_STATUS.COMPLETED}>Completed</option>
 									</select>
 								{:else}
-									<span
-										class={`inline-flex rounded-full px-2 text-xs leading-5 font-semibold ${getStatusColor(
-											task.status
-										)}`}
-									>
-										{task.status}
-									</span>
+									<!-- Quick status toggle buttons -->
+									<div class="flex items-center gap-2">
+										<span
+											class={`inline-flex rounded-full px-2 text-xs leading-5 font-semibold ${getStatusColor(task.status)}`}
+										>
+											{task.status}
+										</span>
+										<div class="flex gap-1">
+											{#if task.status !== TASK_STATUS.TODO}
+												<button
+													on:click={() => handleStatusChange(task, TASK_STATUS.TODO)}
+													class="text-xs text-gray-500 hover:text-gray-700"
+													title="Mark as To Do"
+												>
+													📝
+												</button>
+											{/if}
+											{#if task.status !== TASK_STATUS.IN_PROGRESS}
+												<button
+													on:click={() => handleStatusChange(task, TASK_STATUS.IN_PROGRESS)}
+													class="text-xs text-blue-500 hover:text-blue-700"
+													title="Mark as In Progress"
+												>
+													🔄
+												</button>
+											{/if}
+											{#if task.status !== TASK_STATUS.COMPLETED}
+												<button
+													on:click={() => handleStatusChange(task, TASK_STATUS.COMPLETED)}
+													class="text-xs text-green-500 hover:text-green-700"
+													title="Mark as Completed"
+												>
+													✅
+												</button>
+											{/if}
+										</div>
+									</div>
 								{/if}
 							</td>
 							<td class="px-6 py-4 whitespace-nowrap">
-								{#if editingTaskId === task.id}
-									<select
-										class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-										on:change={(e) => {
-											const value = e.currentTarget.value;
-											if (value === 'null') {
-												handleAssigneeChange(task, null, null);
-											} else {
-												const [type, id] = value.split(':');
-												handleAssigneeChange(task, id, type as 'teacher' | 'student');
-											}
-										}}
-										value={task.assignee_type === 'teacher' && task.assignee_id
-											? `teacher:${task.assignee_id}`
-											: task.assignee_type === 'student' && task.student_assignee_id
-												? `student:${task.student_assignee_id}`
-												: 'null'}
-									>
-										<option value="null">Unassigned</option>
-										<optgroup label="Teachers">
-											{#each getTeacherOptions() as teacher}
-												<option value={`teacher:${teacher.id}`}>
-													{teacher.first_name}
-													{teacher.last_name || ''} (Teacher)
-												</option>
-											{/each}
-										</optgroup>
-										<optgroup label="Students">
-											{#each getStudentOptions() as student}
-												<option value={`student:${student.id}`}>
-													{student.first_name}
-													{student.last_initial || ''} (Student)
-												</option>
-											{/each}
-										</optgroup>
-									</select>
-								{:else}
-									<div class="text-sm text-gray-900">
-										{#if task.assignee_type === 'teacher' && task.assignee}
-											<div class="flex items-center">
-												<span class="mr-2 inline-block h-2 w-2 rounded-full bg-blue-500"></span>
-												{task.assignee.first_name}
-												{task.assignee.last_name || ''}
-												<span class="ml-1 text-xs text-gray-500">(Teacher)</span>
-											</div>
-										{:else if task.assignee_type === 'student' && task.student_assignee}
-											<div class="flex items-center">
-												<span class="mr-2 inline-block h-2 w-2 rounded-full bg-green-500"></span>
-												{task.student_assignee.first_name}
-												{task.student_assignee.last_initial || ''}
-												<span class="ml-1 text-xs text-gray-500">(Student)</span>
-											</div>
-										{:else}
-											<span class="text-gray-400">Unassigned</span>
-										{/if}
-										<button
-											on:click={() => startEditingAssignee(task)}
-											class="ml-2 text-xs text-indigo-600 hover:text-indigo-800"
-										>
-											(change)
-										</button>
-									</div>
-								{/if}
+								<!-- Display-only assignee info -->
+								<div class="text-sm text-gray-900">
+									{getAssigneeDisplay(task)}
+								</div>
+								<div class="mt-1 text-xs text-gray-500">
+									Change assignments when editing the task
+								</div>
 							</td>
 							<td class="px-6 py-4 text-right text-sm font-medium whitespace-nowrap">
 								{#if editingTaskId === task.id}
@@ -275,14 +236,9 @@
 			</table>
 		</div>
 
-		<!-- Kanban View Toggle Button -->
-		<div class="mt-4 text-right">
-			<button
-				class="rounded-md bg-gray-100 px-4 py-2 text-sm text-gray-700 hover:bg-gray-200"
-				disabled
-			>
-				Switch to Kanban View (Coming Soon)
-			</button>
+		<div class="mt-4 rounded-lg bg-blue-50 p-3 text-sm text-gray-600">
+			<strong>💡 Tip:</strong> Use the quick status buttons (📝🔄✅) to update task progress. To change
+			task assignments, use the "Add New Task" form above.
 		</div>
 	{/if}
 </div>

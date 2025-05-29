@@ -11,7 +11,7 @@
 		initialTask = null,
 	} = $props<{
 		projectId: string;
-		groupMembers: any[]; // We'll use any[] for now, ideally this would be properly typed
+		groupMembers: any[];
 		initialTask?: Task | null;
 	}>();
 
@@ -33,60 +33,126 @@
 	// Events
 	const dispatch = createEventDispatcher();
 
-	// Debug logging - ADD THIS TO SEE WHAT'S HAPPENING
+	// Enhanced logging for debugging
 	$effect(() => {
-		console.log('🐛 TaskForm DEBUG:');
+		console.log('🐛 TaskForm DEBUG - Enhanced Logging:');
 		console.log('- projectId:', projectId);
-		console.log('- groupMembers:', groupMembers);
-		console.log('- groupMembers length:', groupMembers?.length);
-		console.log('- groupMembers type:', typeof groupMembers);
-		console.log('- groupMembers isArray:', Array.isArray(groupMembers));
+		console.log('- groupMembers count:', groupMembers?.length);
+		console.log('- initialTask:', initialTask);
 
 		if (groupMembers && Array.isArray(groupMembers)) {
 			const students = groupMembers.filter((m) => m.role === GROUP_MEMBER_ROLES.STUDENT);
 			const teachers = groupMembers.filter((m) => m.role === GROUP_MEMBER_ROLES.TEACHER);
 
-			console.log('- students in groupMembers:', students);
-			console.log('- teachers in groupMembers:', teachers);
-			console.log('- student count:', students.length);
-			console.log('- teacher count:', teachers.length);
+			console.log('- Teachers available:', teachers.length);
+			console.log('- Students available:', students.length);
 
-			// Log the structure of the first student and teacher if they exist
+			// Log detailed structure for debugging
 			if (students.length > 0) {
-				console.log('- first student structure:', students[0]);
-				console.log('- first student has student_id?', !!students[0].student_id);
-				console.log('- first student has user_id?', !!students[0].user_id);
+				console.log('- First student structure:', {
+					id: students[0].id,
+					student_id: students[0].student_id,
+					user_id: students[0].user_id,
+					first_name: students[0].first_name,
+					last_initial: students[0].last_initial,
+					role: students[0].role,
+				});
 			}
+
 			if (teachers.length > 0) {
-				console.log('- first teacher structure:', teachers[0]);
-				console.log('- first teacher has user_id?', !!teachers[0].user_id);
-				console.log('- first teacher has student_id?', !!teachers[0].student_id);
+				console.log('- First teacher structure:', {
+					id: teachers[0].id,
+					user_id: teachers[0].user_id,
+					student_id: teachers[0].student_id,
+					first_name: teachers[0].first_name,
+					last_name: teachers[0].last_name,
+					role: teachers[0].role,
+				});
+			}
+
+			// Validate data integrity
+			const studentsWithoutStudentId = students.filter((s) => !s.student_id);
+			const teachersWithoutUserId = teachers.filter((t) => !t.user_id);
+
+			if (studentsWithoutStudentId.length > 0) {
+				console.warn('⚠️ Students missing student_id:', studentsWithoutStudentId);
+			}
+			if (teachersWithoutUserId.length > 0) {
+				console.warn('⚠️ Teachers missing user_id:', teachersWithoutUserId);
 			}
 		}
+
+		// Log current form state
+		console.log('- Current form state:', {
+			assigneeId,
+			assigneeType,
+			title: title.substring(0, 20) + '...',
+		});
 	});
 
-	// Helper functions to get available assignees
+	// Helper functions with validation
 	function getTeacherOptions() {
-		if (!groupMembers || !Array.isArray(groupMembers)) return [];
-		return groupMembers.filter(
+		if (!groupMembers || !Array.isArray(groupMembers)) {
+			console.warn('⚠️ getTeacherOptions: groupMembers not available');
+			return [];
+		}
+
+		const teachers = groupMembers.filter(
 			(member) => member.role === GROUP_MEMBER_ROLES.TEACHER && member.user_id
 		);
+
+		console.log('🔍 getTeacherOptions: Found', teachers.length, 'valid teachers');
+		return teachers;
 	}
 
 	function getStudentOptions() {
-		if (!groupMembers || !Array.isArray(groupMembers)) return [];
-		return groupMembers.filter(
+		if (!groupMembers || !Array.isArray(groupMembers)) {
+			console.warn('⚠️ getStudentOptions: groupMembers not available');
+			return [];
+		}
+
+		const students = groupMembers.filter(
 			(member) => member.role === GROUP_MEMBER_ROLES.STUDENT && member.student_id
 		);
+
+		console.log('🔍 getStudentOptions: Found', students.length, 'valid students');
+		return students;
 	}
 
 	// Methods
 	function validateForm() {
 		error = null;
+
 		if (!title.trim()) {
 			error = 'Task title is required';
 			return false;
 		}
+
+		// Enhanced validation for assignments
+		if (assigneeType && assigneeId) {
+			if (assigneeType === 'teacher') {
+				const teacher = getTeacherOptions().find((t) => t.user_id === assigneeId);
+				if (!teacher) {
+					console.error('❌ Validation failed: Teacher not found in group members', {
+						assigneeId,
+						availableTeachers: getTeacherOptions().map((t) => t.user_id),
+					});
+					error = 'Selected teacher is not available in this group';
+					return false;
+				}
+			} else if (assigneeType === 'student') {
+				const student = getStudentOptions().find((s) => s.student_id === assigneeId);
+				if (!student) {
+					console.error('❌ Validation failed: Student not found in group members', {
+						assigneeId,
+						availableStudents: getStudentOptions().map((s) => s.student_id),
+					});
+					error = 'Selected student is not available in this group';
+					return false;
+				}
+			}
+		}
+
 		return true;
 	}
 
@@ -97,10 +163,39 @@
 		isSubmitting = true;
 
 		try {
-			console.log('🐛 TaskForm SUBMIT DEBUG:');
+			console.log('🔄 TaskForm SUBMIT - Enhanced Logging:');
+			console.log('- Task operation:', initialTask ? 'UPDATE' : 'CREATE');
+			console.log('- projectId:', projectId);
+			console.log('- taskId:', initialTask?.id);
+			console.log('- title:', title);
 			console.log('- assigneeId:', assigneeId);
 			console.log('- assigneeType:', assigneeType);
-			console.log('- title:', title);
+			console.log('- status:', status);
+
+			// Additional validation logging
+			if (assigneeType && assigneeId) {
+				if (assigneeType === 'teacher') {
+					const teacher = getTeacherOptions().find((t) => t.user_id === assigneeId);
+					console.log('- Teacher validation:', teacher ? 'FOUND' : 'NOT FOUND');
+					if (teacher) {
+						console.log('- Teacher details:', {
+							id: teacher.id,
+							user_id: teacher.user_id,
+							name: `${teacher.first_name} ${teacher.last_name || ''}`,
+						});
+					}
+				} else if (assigneeType === 'student') {
+					const student = getStudentOptions().find((s) => s.student_id === assigneeId);
+					console.log('- Student validation:', student ? 'FOUND' : 'NOT FOUND');
+					if (student) {
+						console.log('- Student details:', {
+							id: student.id,
+							student_id: student.student_id,
+							name: `${student.first_name} ${student.last_initial || ''}`,
+						});
+					}
+				}
+			}
 
 			await dispatch('submit', {
 				projectId,
@@ -114,6 +209,7 @@
 
 			// If this is a new task, reset the form
 			if (!initialTask) {
+				console.log('✅ TaskForm: Resetting form after successful creation');
 				title = '';
 				description = '';
 				assigneeId = null;
@@ -121,14 +217,39 @@
 				status = TASK_STATUS.TODO;
 			}
 		} catch (err) {
+			console.error('❌ TaskForm: Submit failed:', err);
 			if (err instanceof Error) {
 				error = err.message;
 			} else {
 				error = 'An unexpected error occurred';
 			}
-			console.error('Error submitting task form:', err);
 		} finally {
 			isSubmitting = false;
+		}
+	}
+
+	// Handle assignee selection with enhanced logging
+	function handleAssigneeChange(selectedValue: string) {
+		console.log('🔄 TaskForm: Assignee selection changed to:', selectedValue);
+
+		if (selectedValue === 'null') {
+			assigneeId = null;
+			assigneeType = null;
+			console.log('- Cleared assignee');
+		} else {
+			const [type, id] = selectedValue.split(':');
+			assigneeId = id;
+			assigneeType = type as 'teacher' | 'student';
+			console.log('- Set assignee:', { assigneeId, assigneeType });
+
+			// Validate the selection immediately
+			if (assigneeType === 'teacher') {
+				const teacher = getTeacherOptions().find((t) => t.user_id === assigneeId);
+				console.log('- Teacher lookup result:', teacher ? 'FOUND' : 'NOT FOUND');
+			} else if (assigneeType === 'student') {
+				const student = getStudentOptions().find((s) => s.student_id === assigneeId);
+				console.log('- Student lookup result:', student ? 'FOUND' : 'NOT FOUND');
+			}
 		}
 	}
 </script>
@@ -157,9 +278,9 @@
 		</div>
 
 		<div class="form-control">
-			<label for="task-description" class="mb-1 block text-sm font-medium text-gray-700"
-				>Description (optional)</label
-			>
+			<label for="task-description" class="mb-1 block text-sm font-medium text-gray-700">
+				Description (optional)
+			</label>
 			<textarea
 				id="task-description"
 				bind:value={description}
@@ -171,34 +292,20 @@
 
 		<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 			<div class="form-control">
-				<label for="task-assignee" class="mb-1 block text-sm font-medium text-gray-700"
-					>Assignee (optional)</label
-				>
+				<label for="task-assignee" class="mb-1 block text-sm font-medium text-gray-700">
+					Assignee (optional)
+				</label>
 				<select
 					id="task-assignee"
-					on:change={(e) => {
-						const selectedValue = e.currentTarget.value;
-						console.log('🐛 Assignee selection changed to:', selectedValue);
-
-						if (selectedValue === 'null') {
-							assigneeId = null;
-							assigneeType = null;
-						} else {
-							// Format is either "teacher:{id}" or "student:{id}"
-							const [type, id] = selectedValue.split(':');
-							assigneeId = id;
-							assigneeType = type as 'teacher' | 'student';
-							console.log('🐛 Parsed assignee:', { assigneeId, assigneeType });
-						}
-					}}
+					on:change={(e) => handleAssigneeChange(e.currentTarget.value)}
 					class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
 					value={assigneeId && assigneeType ? `${assigneeType}:${assigneeId}` : 'null'}
 				>
 					<option value="null">Unassigned</option>
 
-					<!-- Debug: Show what we're working with -->
+					<!-- Enhanced debugging info -->
 					{#if getTeacherOptions().length === 0 && getStudentOptions().length === 0}
-						<option disabled>No group members available</option>
+						<option disabled>⚠️ No group members available - check group setup</option>
 					{/if}
 
 					<!-- Teachers -->
@@ -206,10 +313,14 @@
 						<optgroup label="Teachers ({getTeacherOptions().length})">
 							{#each getTeacherOptions() as teacher}
 								<option value={`teacher:${teacher.user_id}`}>
-									{teacher.first_name}
-									{teacher.last_name || ''} (Teacher)
+									👨‍🏫 {teacher.first_name}
+									{teacher.last_name || ''}
 								</option>
 							{/each}
+						</optgroup>
+					{:else}
+						<optgroup label="Teachers">
+							<option disabled>No teachers in this group</option>
 						</optgroup>
 					{/if}
 
@@ -218,8 +329,8 @@
 						<optgroup label="Students ({getStudentOptions().length})">
 							{#each getStudentOptions() as student}
 								<option value={`student:${student.student_id}`}>
-									{student.first_name}
-									{student.last_initial || ''} (Student)
+									👨‍🎓 {student.first_name}
+									{student.last_initial || ''}
 								</option>
 							{/each}
 						</optgroup>
@@ -229,6 +340,13 @@
 						</optgroup>
 					{/if}
 				</select>
+
+				<!-- Debug info for development -->
+				{#if assigneeId && assigneeType}
+					<div class="mt-1 text-xs text-gray-500">
+						Selected: {assigneeType} ID {assigneeId}
+					</div>
+				{/if}
 			</div>
 
 			<div class="form-control">
@@ -238,9 +356,9 @@
 					bind:value={status}
 					class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
 				>
-					<option value={TASK_STATUS.TODO}>To Do</option>
-					<option value={TASK_STATUS.IN_PROGRESS}>In Progress</option>
-					<option value={TASK_STATUS.COMPLETED}>Completed</option>
+					<option value={TASK_STATUS.TODO}>📝 To Do</option>
+					<option value={TASK_STATUS.IN_PROGRESS}>🔄 In Progress</option>
+					<option value={TASK_STATUS.COMPLETED}>✅ Completed</option>
 				</select>
 			</div>
 		</div>
