@@ -6,13 +6,13 @@
 	import ProjectForm from '$lib/components/Projects/ProjectForm.svelte';
 	import { projectStore } from '$lib/stores/projects.svelte.ts';
 	import { groupStore } from '$lib/stores/groups.svelte.ts';
+	import { onMount } from 'svelte';
 
 	// State
 	let showCreateForm = $state(false);
 	let selectedGroupId = $state('');
 	let error = $state<string | null>(null);
-	let refreshInterval = $state<number | null>(null);
-	let autoRefresh = $state(false); // DISABLED BY DEFAULT
+	let isInitialized = $state(false);
 
 	// Get stores data with $derived
 	const projects = $derived(projectStore.projects);
@@ -22,27 +22,49 @@
 	const groups = $derived(groupStore.groups);
 	const groupsLoading = $derived(groupStore.loading);
 
-	// FIXED: Much simpler initialization - no auto-refresh loops
-	$effect.root(() => {
-		// One-time data load
-		groupStore.fetchGroups();
-		projectStore.fetchProjects();
+	// FIXED: Simple one-time initialization on mount
+	onMount(async () => {
+		console.log('🔄 Projects page mounting - loading initial data');
+		try {
+			// Load groups and projects first
+			await Promise.all([groupStore.fetchGroups(), projectStore.fetchProjects()]);
 
-		// Clean up interval when component is destroyed
-		return () => {
-			if (refreshInterval) {
-				clearInterval(refreshInterval);
-				refreshInterval = null;
+			// Then load tasks for the projects we just fetched
+			if (projectStore.projects.length > 0) {
+				console.log('🔄 Loading tasks for', projectStore.projects.length, 'projects');
+				await projectStore.fetchTasksForAllProjects(true);
 			}
-		};
+
+			isInitialized = true;
+		} catch (err) {
+			console.error('Error loading initial data:', err);
+			if (err instanceof Error) {
+				error = err.message;
+			} else {
+				error = 'Failed to load data';
+			}
+		}
 	});
 
-	// When group selection changes, fetch projects for that group
+	// FIXED: Only react to group selection changes, not automatic refreshes
 	$effect(() => {
-		if (selectedGroupId) {
-			projectStore.fetchProjectsByGroup(selectedGroupId);
-		} else {
-			projectStore.fetchProjects();
+		// Only run if we've initialized and group selection actually changed
+		if (isInitialized && selectedGroupId !== '') {
+			console.log('🔄 Group filter changed to:', selectedGroupId);
+			// Fetch projects for the group, then tasks
+			projectStore.fetchProjectsByGroup(selectedGroupId).then(() => {
+				if (projectStore.projects.length > 0) {
+					projectStore.fetchTasksForAllProjects(true);
+				}
+			});
+		} else if (isInitialized && selectedGroupId === '') {
+			console.log('🔄 Showing all projects');
+			// Fetch all projects, then tasks
+			projectStore.fetchProjects().then(() => {
+				if (projectStore.projects.length > 0) {
+					projectStore.fetchTasksForAllProjects(true);
+				}
+			});
 		}
 	});
 
@@ -72,22 +94,29 @@
 		goto(`/projects/${project.id}`);
 	}
 
-	function toggleAutoRefresh() {
-		autoRefresh = !autoRefresh;
-		if (autoRefresh) {
-			// Set to 30 seconds, not every few seconds
-			refreshInterval = setInterval(() => {
-				console.log('Auto-refreshing projects...');
-				projectStore.fetchProjects();
-			}, 30000) as unknown as number; // 30 seconds
-		} else if (refreshInterval) {
-			clearInterval(refreshInterval);
-			refreshInterval = null;
-		}
-	}
+	// FIXED: Manual refresh only - no auto-refresh
+	async function refreshProjects() {
+		console.log('🔄 Manual refresh requested');
+		try {
+			if (selectedGroupId) {
+				await projectStore.fetchProjectsByGroup(selectedGroupId);
+			} else {
+				await projectStore.fetchProjects();
+			}
 
-	function refreshProjects() {
-		projectStore.fetchProjects();
+			// Also refresh tasks after refreshing projects
+			if (projectStore.projects.length > 0) {
+				console.log('🔄 Refreshing tasks for', projectStore.projects.length, 'projects');
+				await projectStore.fetchTasksForAllProjects(true);
+			}
+		} catch (err) {
+			console.error('Error refreshing projects:', err);
+			if (err instanceof Error) {
+				error = err.message;
+			} else {
+				error = 'Failed to refresh projects';
+			}
+		}
 	}
 
 	// Calculate loading state
@@ -114,39 +143,29 @@
 
 		<!-- Controls -->
 		<div class="flex flex-wrap items-center gap-2">
-			<!-- Refresh Control -->
-			<div class="flex items-center gap-2">
-				<button
-					on:click={refreshProjects}
-					class="btn btn-sm btn-circle btn-ghost"
-					title="Refresh"
-					aria-label="Refresh projects"
+			<!-- FIXED: Simple manual refresh button -->
+			<button
+				on:click={refreshProjects}
+				class="btn btn-sm btn-circle btn-ghost"
+				title="Refresh"
+				aria-label="Refresh projects"
+				disabled={loading}
+			>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					class="h-5 w-5"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
 				>
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						class="h-5 w-5"
-						fill="none"
-						viewBox="0 0 24 24"
-						stroke="currentColor"
-					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-						/>
-					</svg>
-				</button>
-				<label class="flex cursor-pointer items-center gap-1">
-					<input
-						type="checkbox"
-						class="toggle toggle-sm toggle-primary"
-						checked={autoRefresh}
-						on:change={toggleAutoRefresh}
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
 					/>
-					<span class="text-xs text-gray-500">Auto-refresh (30s)</span>
-				</label>
-			</div>
+				</svg>
+			</button>
 
 			<!-- Group Filter -->
 			<select
@@ -186,6 +205,7 @@
 	{#if error}
 		<div class="alert alert-error mb-4">
 			<p>{error}</p>
+			<button on:click={() => (error = null)} class="float-right">&times;</button>
 		</div>
 	{/if}
 

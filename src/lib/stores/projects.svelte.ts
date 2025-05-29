@@ -11,9 +11,8 @@ class ProjectStore {
   error: string | null = $state(null);
   
   constructor() {
-    if (browser) {
-      this.fetchProjects();
-    }
+    // FIXED: Don't auto-fetch on construction
+    console.log('ProjectStore initialized');
   }
   
   async fetchProjects() {
@@ -21,6 +20,7 @@ class ProjectStore {
     this.error = null;
     
     try {
+      console.log('🔄 ProjectStore: Fetching projects');
       const response = await fetch('/api/projects');
       
       if (!response.ok) {
@@ -31,8 +31,8 @@ class ProjectStore {
       const data = await response.json();
       this.projects = data || [];
       
-      // Fetch tasks for all projects
-      this.fetchTasksForAllProjects();
+      // FIXED: Don't automatically fetch tasks - make it explicit
+      console.log('✅ ProjectStore: Fetched', this.projects.length, 'projects');
     } catch (err: any) {
       console.error('Error fetching projects:', err);
       this.error = err.message;
@@ -41,10 +41,18 @@ class ProjectStore {
     }
   }
   
-  async fetchTasksForAllProjects() {
+  // FIXED: Make task fetching explicit and optional
+  async fetchTasksForAllProjects(force = false) {
+    // Only fetch if we don't already have tasks or if forced
+    if (!force && Object.keys(this.projectTasks).length > 0) {
+      console.log('⏭️ ProjectStore: Skipping task fetch - already have tasks');
+      return;
+    }
+    
     this.tasksLoading = true;
     
     try {
+      console.log('🔄 ProjectStore: Fetching tasks for all projects');
       const projectIds = this.projects.map(project => project.id);
       
       // Create a temporary object to store tasks by project ID
@@ -69,6 +77,9 @@ class ProjectStore {
       
       // Update the state with all tasks
       this.projectTasks = tasksMap;
+      
+      const totalTasks = Object.values(tasksMap).reduce((sum, tasks) => sum + tasks.length, 0);
+      console.log('✅ ProjectStore: Fetched', totalTasks, 'total tasks');
     } catch (err: any) {
       console.error('Error fetching tasks for projects:', err);
     } finally {
@@ -81,6 +92,7 @@ class ProjectStore {
     this.error = null;
     
     try {
+      console.log('🔄 ProjectStore: Fetching projects for group:', groupId);
       const response = await fetch(`/api/projects?groupId=${groupId}`);
       
       if (!response.ok) {
@@ -91,13 +103,23 @@ class ProjectStore {
       const data = await response.json();
       this.projects = data || [];
       
-      // Fetch tasks for all projects in this group
-      this.fetchTasksForAllProjects();
+      // FIXED: Clear existing tasks when switching groups
+      this.projectTasks = {};
+      
+      console.log('✅ ProjectStore: Fetched', this.projects.length, 'projects for group');
     } catch (err: any) {
       console.error('Error fetching projects by group:', err);
       this.error = err.message;
     } finally {
       this.loading = false;
+    }
+  }
+  
+  // FIXED: Add method to load projects with tasks in one call
+  async loadProjectsWithTasks() {
+    await this.fetchProjects();
+    if (this.projects.length > 0) {
+      await this.fetchTasksForAllProjects(true);
     }
   }
   
@@ -131,6 +153,7 @@ class ProjectStore {
         throw new Error('Group is required');
       }
       
+      console.log('🔄 ProjectStore: Creating project:', title);
       const response = await fetch('/api/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -157,6 +180,7 @@ class ProjectStore {
         [newProject.id]: []
       };
       
+      console.log('✅ ProjectStore: Created project:', newProject.title);
       return newProject;
     } catch (err: any) {
       console.error('Error creating project:', err);

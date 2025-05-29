@@ -18,6 +18,7 @@
 	let showDeleteConfirm = $state(false);
 	let error = $state<string | null>(null);
 	let activeTab = $state('tasks'); // 'tasks' or 'details'
+	let isInitialized = $state(false);
 
 	// References to store values
 	const project = $derived(projectStore.getProjectById(projectId));
@@ -27,25 +28,41 @@
 	const tasksLoading = $derived(taskStore.loading);
 	const groupLoading = $derived(groupStore.membersLoading);
 
-	// Load data
-	onMount(() => {
-		loadProjectData();
+	// FIXED: Simple one-time data loading on mount
+	onMount(async () => {
+		if (!projectId) {
+			error = 'Invalid project ID';
+			return;
+		}
+
+		console.log('🔄 Project detail page mounting for:', projectId);
+		await loadProjectData();
 	});
 
 	async function loadProjectData() {
 		try {
-			// Fetch project data if not already loaded
+			console.log('🔄 Loading project data for:', projectId);
+
+			// First, ensure we have projects loaded
 			if (!project) {
+				console.log('🔄 Project not found in store, fetching all projects...');
 				await projectStore.fetchProjects();
 			}
 
-			// Once we have the project, load related data
-			if (project) {
-				await Promise.all([
-					taskStore.fetchTasksForProject(projectId),
-					groupStore.fetchGroupMembers(project.group_id),
-				]);
+			// Check again after fetching
+			const currentProject = projectStore.getProjectById(projectId);
+			if (!currentProject) {
+				throw new Error('Project not found');
 			}
+
+			// Load related data in parallel
+			await Promise.all([
+				taskStore.fetchTasksForProject(projectId),
+				groupStore.fetchGroupMembers(currentProject.group_id),
+			]);
+
+			isInitialized = true;
+			console.log('✅ Project data loaded successfully');
 		} catch (err) {
 			console.error('Error loading project data:', err);
 			if (err instanceof Error) {
@@ -56,12 +73,8 @@
 		}
 	}
 
-	// Reactive effect to reload data when project ID changes
-	$effect(() => {
-		if (projectId) {
-			loadProjectData();
-		}
-	});
+	// FIXED: Remove reactive effect that was causing constant reloads
+	// The original $effect(() => { if (projectId) loadProjectData(); }) was problematic
 
 	// Event handlers for project
 	async function handleUpdateProject(event: CustomEvent) {
@@ -98,12 +111,12 @@
 		}
 	}
 
-	// FIXED: Event handlers for tasks
+	// Event handlers for tasks
 	async function handleCreateTask(event: CustomEvent) {
 		try {
 			const { title, description, assigneeId, assigneeType, status } = event.detail;
 
-			console.log('🐛 PROJECT PAGE: Received task creation event:', {
+			console.log('🔄 Creating task:', {
 				title,
 				description,
 				assigneeId,
@@ -111,7 +124,6 @@
 				status,
 			});
 
-			// FIXED: Pass assigneeType properly to the task store
 			await taskStore.createTask(projectId, title, assigneeId, assigneeType, description);
 		} catch (err) {
 			console.error('Error creating task:', err);
@@ -126,7 +138,7 @@
 	async function handleUpdateTask(event: CustomEvent) {
 		try {
 			const { taskId, title, status } = event.detail;
-			console.log('🐛 PROJECT PAGE: Updating task:', { taskId, title, status });
+			console.log('🔄 Updating task:', { taskId, title, status });
 			await taskStore.updateTask(projectId, taskId, { title, status });
 		} catch (err) {
 			console.error('Error updating task:', err);
@@ -141,7 +153,7 @@
 	async function handleTaskStatusChange(event: CustomEvent) {
 		try {
 			const { taskId, status } = event.detail;
-			console.log('🐛 PROJECT PAGE: Changing task status:', { taskId, status });
+			console.log('🔄 Changing task status:', { taskId, status });
 			await taskStore.updateTaskStatus(projectId, taskId, status);
 		} catch (err) {
 			console.error('Error updating task status:', err);
@@ -156,7 +168,7 @@
 	async function handleTaskAssignment(event: CustomEvent) {
 		try {
 			const { taskId, assigneeId, assigneeType } = event.detail;
-			console.log('🐛 PROJECT PAGE: Assigning task:', { taskId, assigneeId, assigneeType });
+			console.log('🔄 Assigning task:', { taskId, assigneeId, assigneeType });
 			await taskStore.assignTask(projectId, taskId, assigneeId, assigneeType);
 		} catch (err) {
 			console.error('Error assigning task:', err);
@@ -171,7 +183,7 @@
 	async function handleDeleteTask(event: CustomEvent) {
 		try {
 			const { taskId } = event.detail;
-			console.log('🐛 PROJECT PAGE: Deleting task:', { taskId });
+			console.log('🔄 Deleting task:', { taskId });
 			await taskStore.deleteTask(projectId, taskId);
 		} catch (err) {
 			console.error('Error deleting task:', err);
@@ -182,11 +194,40 @@
 			}
 		}
 	}
+
+	// FIXED: Manual refresh function
+	async function refreshProjectData() {
+		console.log('🔄 Manual refresh requested');
+		await loadProjectData();
+	}
 </script>
 
 <div class="container mx-auto px-4 py-8">
-	<div class="mb-6">
+	<div class="mb-6 flex items-center justify-between">
 		<a href="/projects" class="text-indigo-600 hover:text-indigo-800"> &larr; Back to Projects </a>
+
+		<!-- FIXED: Add manual refresh button -->
+		<button
+			on:click={refreshProjectData}
+			class="btn btn-sm btn-circle btn-ghost"
+			title="Refresh project data"
+			disabled={loading || tasksLoading}
+		>
+			<svg
+				xmlns="http://www.w3.org/2000/svg"
+				class="h-5 w-5"
+				fill="none"
+				viewBox="0 0 24 24"
+				stroke="currentColor"
+			>
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					stroke-width="2"
+					d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+				/>
+			</svg>
+		</button>
 	</div>
 
 	{#if error}
