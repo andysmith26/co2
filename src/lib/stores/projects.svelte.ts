@@ -5,13 +5,12 @@ import type { Project, Task } from '../types';
 class ProjectStore {
   // Use $state for reactive properties with explicit type declarations
   projects: Project[] = $state([]);
-  projectTasks: Record<string, Task[]> = $state({});
+  projectTasks: Record<string, Task[] | null> = $state({}); // null = not loaded, [] = loaded but empty, Task[] = loaded with data
   loading: boolean = $state(false);
-  tasksLoading: boolean = $state(false);
+  tasksLoading: Set<string> = $state(new Set()); // Track which projects are currently loading tasks
   error: string | null = $state(null);
   
   constructor() {
-    // FIXED: Don't auto-fetch on construction
     console.log('ProjectStore initialized');
   }
   
@@ -31,59 +30,12 @@ class ProjectStore {
       const data = await response.json();
       this.projects = data || [];
       
-      // FIXED: Don't automatically fetch tasks - make it explicit
       console.log('✅ ProjectStore: Fetched', this.projects.length, 'projects');
     } catch (err: any) {
       console.error('Error fetching projects:', err);
       this.error = err.message;
     } finally {
       this.loading = false;
-    }
-  }
-  
-  // FIXED: Make task fetching explicit and optional
-  async fetchTasksForAllProjects(force = false) {
-    // Only fetch if we don't already have tasks or if forced
-    if (!force && Object.keys(this.projectTasks).length > 0) {
-      console.log('⏭️ ProjectStore: Skipping task fetch - already have tasks');
-      return;
-    }
-    
-    this.tasksLoading = true;
-    
-    try {
-      console.log('🔄 ProjectStore: Fetching tasks for all projects');
-      const projectIds = this.projects.map(project => project.id);
-      
-      // Create a temporary object to store tasks by project ID
-      const tasksMap: Record<string, Task[]> = {};
-      
-      // Fetch tasks for each project
-      await Promise.all(
-        projectIds.map(async (projectId) => {
-          try {
-            const response = await fetch(`/api/projects/${projectId}/tasks`);
-            
-            if (response.ok) {
-              const tasks = await response.json();
-              tasksMap[projectId] = tasks || [];
-            }
-          } catch (err) {
-            console.error(`Error fetching tasks for project ${projectId}:`, err);
-            // Continue with other projects even if one fails
-          }
-        })
-      );
-      
-      // Update the state with all tasks
-      this.projectTasks = tasksMap;
-      
-      const totalTasks = Object.values(tasksMap).reduce((sum, tasks) => sum + tasks.length, 0);
-      console.log('✅ ProjectStore: Fetched', totalTasks, 'total tasks');
-    } catch (err: any) {
-      console.error('Error fetching tasks for projects:', err);
-    } finally {
-      this.tasksLoading = false;
     }
   }
   
@@ -103,7 +55,7 @@ class ProjectStore {
       const data = await response.json();
       this.projects = data || [];
       
-      // FIXED: Clear existing tasks when switching groups
+      // Clear task cache when switching groups since different projects are shown
       this.projectTasks = {};
       
       console.log('✅ ProjectStore: Fetched', this.projects.length, 'projects for group');
@@ -115,12 +67,64 @@ class ProjectStore {
     }
   }
   
-  // FIXED: Add method to load projects with tasks in one call
-  async loadProjectsWithTasks() {
-    await this.fetchProjects();
-    if (this.projects.length > 0) {
-      await this.fetchTasksForAllProjects(true);
+  // Progressive task loading - load tasks for a single project
+  async fetchTasksForProject(projectId: string, force = false) {
+    // Don't reload if already loaded/loading unless forced
+    if (!force && (this.tasksLoading.has(projectId) || this.projectTasks[projectId] !== undefined)) {
+      return;
     }
+    
+    // Mark as loading
+    this.tasksLoading.add(projectId);
+    
+    try {
+      console.log('🔄 ProjectStore: Fetching tasks for project:', projectId);
+      const response = await fetch(`/api/projects/${projectId}/tasks`);
+      
+      if (response.ok) {
+        const tasks = await response.json();
+        this.projectTasks = {
+          ...this.projectTasks,
+          [projectId]: tasks || []
+        };
+        console.log('✅ ProjectStore: Loaded', tasks?.length || 0, 'tasks for project', projectId);
+      } else {
+        console.error('Failed to fetch tasks for project:', projectId);
+        this.projectTasks = {
+          ...this.projectTasks,
+          [projectId]: [] // Mark as loaded but empty on error
+        };
+      }
+    } catch (err) {
+      console.error(`Error fetching tasks for project ${projectId}:`, err);
+      this.projectTasks = {
+        ...this.projectTasks,
+        [projectId]: [] // Mark as loaded but empty on error
+      };
+    } finally {
+      // Remove from loading set
+      this.tasksLoading.delete(projectId);
+    }
+  }
+  
+  // Load tasks for all visible projects progressively
+  async loadTasksForVisibleProjects(force = false) {
+    if (this.projects.length === 0) return;
+    
+    console.log('🔄 ProjectStore: Starting progressive task loading for', this.projects.length, 'projects');
+    
+    // Start loading tasks for each project concurrently
+    const loadPromises = this.projects.map(project => 
+      this.fetchTasksForProject(project.id, force)
+    );
+    
+    // Don't await all - let them complete individually
+    // This allows each project card to update as soon as its tasks are loaded
+    Promise.allSettled(loadPromises).then((results) => {
+      const successful = results.filter(r => r.status === 'fulfilled').length;
+      const failed = results.filter(r => r.status === 'rejected').length;
+      console.log('✅ ProjectStore: Progressive task loading complete.', successful, 'successful,', failed, 'failed');
+    });
   }
   
   getProjects() {
@@ -135,8 +139,19 @@ class ProjectStore {
     return this.projectTasks;
   }
   
-  getTasksForProject(projectId: string) {
-    return this.projectTasks[projectId] || [];
+  getTasksForProject(projectId: string): Task[] | null {
+    return this.projectTasks[projectId] ?? null; // null means not loaded yet
+  }
+  
+  isProjectTasksLoading(projectId: string): boolean {
+    return this.tasksLoading.has(projectId);
+  }
+  
+  // Get total task count across all loaded projects
+  getTotalTaskCount(): number {
+    return Object.values(this.projectTasks)
+      .filter((tasks): tasks is Task[] => Array.isArray(tasks))
+      .reduce((total, tasks) => total + tasks.length, 0);
   }
   
   async createProject(title: string, groupId: string, description?: string) {
