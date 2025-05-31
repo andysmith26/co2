@@ -48,6 +48,10 @@ export const TASK_STATUS = {
     TEACHER: 'teacher'
   } as const;
 
+  export const RESOURCE_TYPES = {
+  LINK: 'LINK'
+} as const;
+
 /**
  * Feature Flags
  * 

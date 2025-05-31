@@ -75,6 +75,7 @@
 	async function handleCreateResource(event: CustomEvent) {
 		try {
 			const { type, title, url, description, group_id } = event.detail;
+			console.log('🔄 Creating resource:', { type, title, url, group_id });
 			await resourceStore.createResource(type, title, url, description, group_id);
 			showCreateForm = false;
 			editingResource = null;
@@ -92,6 +93,7 @@
 	async function handleUpdateResource(event: CustomEvent) {
 		try {
 			const { resourceId, title, url, description, group_id } = event.detail;
+			console.log('🔄 Updating resource:', { resourceId, title, url, group_id });
 			await resourceStore.updateResource(resourceId, { title, url, description, group_id });
 			showCreateForm = false;
 			editingResource = null;
@@ -114,6 +116,7 @@
 	async function handleDeleteResource(event: CustomEvent) {
 		try {
 			const { resourceId } = event.detail;
+			console.log('🔄 Deleting resource:', resourceId);
 			await resourceStore.deleteResource(resourceId);
 			error = null;
 		} catch (err) {
