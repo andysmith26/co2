@@ -1,5 +1,5 @@
 // Import constants to use in type definitions
-import { TASK_STATUS, STUDENT_STATUS, DIFFICULTY_LEVELS, TASK_CATEGORIES, VIEW_MODES, GROUP_MEMBER_ROLES } from '../constants';
+import { TASK_STATUS, STUDENT_STATUS, DIFFICULTY_LEVELS, TASK_CATEGORIES, VIEW_MODES, GROUP_MEMBER_ROLES, RESOURCE_TYPES } from '../constants';
 
 // Student type definition
 export interface Student {
@@ -69,6 +69,39 @@ export interface Task {
   } | null;
 }
 
+// Resource type definition - UPDATED for independent resources
+export interface Resource {
+  id: string;
+  type: typeof RESOURCE_TYPES[keyof typeof RESOURCE_TYPES];
+  title: string;
+  description?: string | null;
+  url: string;
+  group_id?: string | null; // NULL = global resource
+  student_id?: string | null; // NULL = not student-specific
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  
+  // Populated creator object (added by API)
+  creator?: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+  } | null;
+  
+  // For project-linked resources (when fetched via project endpoints)
+  link_id?: string; // ID of the project_resources junction record
+  linked_at?: string;
+  linked_by?: string;
+  linker?: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+  } | null;
+}
+
 // View mode type
 export type ViewMode = typeof VIEW_MODES[keyof typeof VIEW_MODES];
 
@@ -97,6 +130,22 @@ export interface TaskCardProps {
   compact?: boolean;
 }
 
+// Resource props interfaces - NEW
+export interface ResourceCardProps {
+  resource: Resource;
+  compact?: boolean;
+}
+
+export interface ResourceFormProps {
+  projectId: string;
+  initialResource?: Resource | null;
+}
+
+export interface ResourceListProps {
+  resources: Resource[];
+  loading?: boolean;
+}
+
 // Project Status Constants
 export const PROJECT_STATUS = {
   ACTIVE: 'active',
@@ -119,20 +168,6 @@ export interface Project {
   status: typeof PROJECT_STATUS[keyof typeof PROJECT_STATUS];
   created_by: string;
   group_id: string;
-  created_at: string;
-  updated_at: string;
-}
-
-// Task type definition
-export interface Task {
-  id: string;
-  project_id: string;
-  title: string;
-  description?: string | null;
-  status: typeof TASK_STATUS[keyof typeof TASK_STATUS];
-  assignee_id?: string | null;        // For teacher assignees
-  student_assignee_id?: string | null; // For student assignees
-  assignee_type?: 'teacher' | 'student' | null; // Indicates which assignee field is being used
   created_at: string;
   updated_at: string;
 }
