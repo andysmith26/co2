@@ -6,9 +6,11 @@
 	import { projectStore } from '$lib/stores/projects.svelte.ts';
 	import { taskStore } from '$lib/stores/tasks.svelte.ts';
 	import { groupStore } from '$lib/stores/groups.svelte.ts';
+	import { resourceStore } from '$lib/stores/resources.svelte.ts';
 	import ProjectForm from '$lib/components/Projects/ProjectForm.svelte';
 	import TaskList from '$lib/components/Tasks/TaskList.svelte';
 	import TaskForm from '$lib/components/Tasks/TaskForm.svelte';
+	import ProjectResourceLinker from '$lib/components/Resources/ProjectResourceLinker.svelte';
 
 	// Get the project ID from the URL
 	const projectId = $derived($page.params.projectId);
@@ -17,16 +19,20 @@
 	let isEditing = $state(false);
 	let showDeleteConfirm = $state(false);
 	let error = $state<string | null>(null);
-	let activeTab = $state('tasks'); // 'tasks' or 'details'
+	let activeTab = $state('tasks'); // 'tasks', 'resources', or 'details'
 	let isInitialized = $state(false);
+	let resourcesLoaded = $state(false); // Track if resources have been loaded
 
 	// References to store values
 	const project = $derived(projectStore.getProjectById(projectId));
 	const tasks = $derived(taskStore.getTasks());
 	const groupMembers = $derived(groupStore.getGroupMembers());
+	const resources = $derived(resourceStore.getResources());
+	const projectResources = $derived(resourceStore.getProjectResources());
 	const loading = $derived(projectStore.loading);
 	const tasksLoading = $derived(taskStore.loading);
 	const groupLoading = $derived(groupStore.membersLoading);
+	const resourcesLoading = $derived(resourceStore.loading || resourceStore.projectResourcesLoading);
 
 	// Enhanced logging for debugging
 	$effect(() => {
@@ -35,7 +41,11 @@
 			hasProject: !!project,
 			tasksCount: tasks.length,
 			groupMembersCount: groupMembers.length,
+			resourcesCount: resources.length,
+			projectResourcesCount: projectResources.length,
 			isInitialized,
+			resourcesLoaded,
+			activeTab,
 		});
 
 		if (groupMembers.length > 0) {
@@ -44,6 +54,14 @@
 				teachers: groupMembers.filter((m) => m.role === 'teacher').length,
 				students: groupMembers.filter((m) => m.role === 'student').length,
 			});
+		}
+	});
+
+	// Watch for tab changes and lazy load resources
+	$effect(() => {
+		if (activeTab === 'resources' && !resourcesLoaded && isInitialized) {
+			console.log('🔄 Loading resources for first time');
+			loadResourcesData();
 		}
 	});
 
@@ -76,7 +94,7 @@
 
 			console.log('✅ Project found:', currentProject.title);
 
-			// Load related data in parallel
+			// Load related data in parallel (except resources - they'll be lazy loaded)
 			await Promise.all([
 				taskStore.fetchTasksForProject(projectId),
 				groupStore.fetchGroupMembers(currentProject.group_id),
@@ -90,6 +108,30 @@
 				error = err.message;
 			} else {
 				error = 'Failed to load project data';
+			}
+		}
+	}
+
+	async function loadResourcesData() {
+		if (resourcesLoaded) return;
+
+		try {
+			console.log('🔄 Loading resources data for project:', projectId);
+
+			// Load available resources and project-specific resources in parallel
+			await Promise.all([
+				resourceStore.fetchResources(), // All available resources for linking
+				resourceStore.fetchProjectResources(projectId), // Already linked resources
+			]);
+
+			resourcesLoaded = true;
+			console.log('✅ Resources data loaded successfully');
+		} catch (err) {
+			console.error('❌ Error loading resources data:', err);
+			if (err instanceof Error) {
+				error = err.message;
+			} else {
+				error = 'Failed to load resources data';
 			}
 		}
 	}
@@ -185,8 +227,6 @@
 		}
 	}
 
-	// REMOVED: handleTaskAssignment - assignments should only be done during task creation/editing
-
 	async function handleDeleteTask(event: CustomEvent) {
 		try {
 			const { taskId } = event.detail;
@@ -202,11 +242,50 @@
 		}
 	}
 
+	// Event handlers for resources
+	async function handleLinkResource(event: CustomEvent) {
+		try {
+			const { resourceId } = event.detail;
+			console.log('🔄 Linking resource to project:', { projectId, resourceId });
+			await resourceStore.linkResourceToProject(projectId, resourceId);
+		} catch (err) {
+			console.error('❌ Error linking resource:', err);
+			if (err instanceof Error) {
+				error = err.message;
+			} else {
+				error = 'Failed to link resource';
+			}
+		}
+	}
+
+	async function handleUnlinkResource(event: CustomEvent) {
+		try {
+			const { resourceId } = event.detail;
+			console.log('🔄 Unlinking resource from project:', { projectId, resourceId });
+			await resourceStore.unlinkResourceFromProject(projectId, resourceId);
+		} catch (err) {
+			console.error('❌ Error unlinking resource:', err);
+			if (err instanceof Error) {
+				error = err.message;
+			} else {
+				error = 'Failed to unlink resource';
+			}
+		}
+	}
+
 	// FIXED: Manual refresh function
 	async function refreshProjectData() {
 		console.log('🔄 Manual refresh requested');
 		await loadProjectData();
+
+		// If resources tab is active and was loaded, refresh resources too
+		if (activeTab === 'resources' && resourcesLoaded) {
+			await loadResourcesData();
+		}
 	}
+
+	// Get available resources (not already linked to this project)
+	const availableResources = $derived(resourceStore.getAvailableResourcesForProject(projectId));
 </script>
 
 <div class="container mx-auto px-4 py-8">
@@ -218,7 +297,7 @@
 			on:click={refreshProjectData}
 			class="btn btn-sm btn-circle btn-ghost"
 			title="Refresh project data"
-			disabled={loading || tasksLoading}
+			disabled={loading || tasksLoading || (activeTab === 'resources' && resourcesLoading)}
 		>
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
@@ -325,7 +404,20 @@
 						}`}
 						on:click={() => (activeTab = 'tasks')}
 					>
-						Tasks
+						Tasks ({tasks.length})
+					</button>
+					<button
+						class={`border-b-2 px-4 py-2 text-sm font-medium ${
+							activeTab === 'resources'
+								? 'border-indigo-500 text-indigo-600'
+								: 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+						}`}
+						on:click={() => (activeTab = 'resources')}
+					>
+						Resources
+						{#if resourcesLoaded}
+							({projectResources.length})
+						{/if}
 					</button>
 					<button
 						class={`border-b-2 px-4 py-2 text-sm font-medium ${
@@ -351,7 +443,7 @@
 							<TaskForm {projectId} {groupMembers} on:submit={handleCreateTask} />
 						</div>
 
-						<!-- Task List - SIMPLIFIED: No more assignment editing -->
+						<!-- Task List -->
 						<div class="mt-6">
 							<TaskList
 								{tasks}
@@ -362,6 +454,26 @@
 								on:delete={handleDeleteTask}
 							/>
 						</div>
+					</div>
+				</div>
+			{:else if activeTab === 'resources'}
+				<div class="overflow-hidden rounded-lg bg-white shadow">
+					<div class="p-6">
+						{#if !resourcesLoaded}
+							<div class="flex justify-center py-12">
+								<span class="loading loading-spinner loading-lg text-indigo-600"></span>
+								<span class="ml-3 text-gray-600">Loading resources...</span>
+							</div>
+						{:else}
+							<ProjectResourceLinker
+								{projectId}
+								{availableResources}
+								linkedResources={projectResources}
+								loading={resourcesLoading}
+								on:link={handleLinkResource}
+								on:unlink={handleUnlinkResource}
+							/>
+						{/if}
 					</div>
 				</div>
 			{:else if activeTab === 'details'}
@@ -416,14 +528,30 @@
 								{/if}
 							</p>
 						</div>
+
+						{#if resourcesLoaded}
+							<div>
+								<h3 class="text-sm font-medium text-gray-500">Resources Summary</h3>
+								<p class="mt-1">
+									{projectResources.length} linked resources
+									{#if projectResources.length > 0}
+										<br />
+										<span class="text-xs text-gray-400">
+											{availableResources.length} more available to link
+										</span>
+									{/if}
+								</p>
+							</div>
+						{/if}
 					</div>
 
 					<div class="mt-6 rounded-lg bg-blue-50 p-4">
-						<h4 class="text-sm font-medium text-blue-900">💡 Assignment Tips</h4>
+						<h4 class="text-sm font-medium text-blue-900">💡 Project Management Tips</h4>
 						<ul class="mt-2 text-sm text-blue-800">
-							<li>• Create tasks with assignments using the form above</li>
-							<li>• Use quick status buttons (📝🔄✅) to update progress</li>
-							<li>• To change assignments, create a new task or edit existing ones</li>
+							<li>• Create tasks with assignments using the Tasks tab</li>
+							<li>• Link relevant resources to help students access materials</li>
+							<li>• Use quick status buttons (📝🔄✅) to update task progress</li>
+							<li>• Resources are shared across projects - link existing ones when possible</li>
 						</ul>
 					</div>
 				</div>
