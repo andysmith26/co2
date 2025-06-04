@@ -21,25 +21,18 @@
 	const announcements = [
 		{
 			id: 1,
-			title: "Welcome to Projects!",
-			content: "This is where you'll manage all your project work. Create projects, assign tasks, and track progress with your team.",
+			title: "VR & Computers",
+			content: "You may only login if you have signed up with Mr. Smith",
 			date: "2025-01-01",
 			priority: "info"
 		},
 		{
 			id: 2,
-			title: "New Features Available",
-			content: "We've added resource linking to projects! You can now attach important links and materials directly to your projects for easy student access.",
+			title: "Friendly Comp",
+			content: "versus high school robots on Monday June 9",
 			date: "2025-01-15",
 			priority: "update"
 		},
-		{
-			id: 3,
-			title: "Tips for Success",
-			content: "Remember to assign tasks to specific students or teachers for better accountability. Use the quick status buttons (📝🔄✅) to keep everything up to date.",
-			date: "2025-01-20",
-			priority: "tip"
-		}
 	];
 
 	// Priority styles
