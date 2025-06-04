@@ -27,13 +27,6 @@
 	// Events
 	const dispatch = createEventDispatcher();
 
-	// Computed values
-	const completedTasks = $derived(
-		tasks ? tasks.filter((t) => t.status === TASK_STATUS.COMPLETED).length : 0
-	);
-	const totalTasks = $derived(tasks ? tasks.length : 0);
-	const progressPercentage = $derived(totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0);
-
 	// Status colors
 	const statusColors = {
 		active: 'bg-green-100 text-green-800 border-green-200',
@@ -67,14 +60,6 @@
 			handleClick();
 		}
 	}
-
-	// Format date
-	function formatDate(dateString: string): string {
-		return new Date(dateString).toLocaleDateString('en-US', {
-			month: 'short',
-			day: 'numeric',
-		});
-	}
 </script>
 
 <div
@@ -86,7 +71,7 @@
 	aria-label="Open project {project.title}"
 >
 	<!-- Project Header -->
-	<div class="p-5 pb-3">
+	<div class="p-5">
 		<div class="mb-3 flex items-start justify-between">
 			<div class="min-w-0 flex-1">
 				<h3
@@ -111,25 +96,7 @@
 			</span>
 		</div>
 
-		<!-- Progress Bar (only show if tasks are loaded) -->
-		{#if tasks !== null && totalTasks > 0}
-			<div class="mb-3">
-				<div class="mb-1 flex items-center justify-between text-xs text-gray-500">
-					<span>Progress</span>
-					<span>{completedTasks}/{totalTasks} tasks</span>
-				</div>
-				<div class="h-1.5 w-full rounded-full bg-gray-200">
-					<div
-						class="h-1.5 rounded-full bg-indigo-500 transition-all duration-300 ease-out"
-						style="width: {progressPercentage}%"
-					></div>
-				</div>
-			</div>
-		{/if}
-	</div>
-
-	<!-- Tasks Section -->
-	<div class="px-5 pb-4">
+		<!-- Tasks Section -->
 		{#if tasksLoading}
 			<!-- Loading State -->
 			<div class="space-y-2">
@@ -186,8 +153,8 @@
 		{:else}
 			<!-- Tasks loaded -->
 			<div class="space-y-2">
-				<!-- Show up to 4 tasks -->
-				{#each tasks.slice(0, 4) as task (task.id)}
+				<!-- Show up to 5 tasks (increased from 4 since we have more space) -->
+				{#each tasks.slice(0, 5) as task (task.id)}
 					<div class="flex items-center space-x-2 text-sm">
 						<!-- Status indicator -->
 						<div
@@ -223,41 +190,12 @@
 				{/each}
 
 				<!-- Show "and X more" if there are more tasks -->
-				{#if tasks.length > 4}
+				{#if tasks.length > 5}
 					<div class="pt-1 text-center text-xs text-gray-500">
-						and {tasks.length - 4} more task{tasks.length - 4 !== 1 ? 's' : ''}
+						and {tasks.length - 5} more task{tasks.length - 5 !== 1 ? 's' : ''}
 					</div>
 				{/if}
 			</div>
 		{/if}
-	</div>
-
-	<!-- Footer -->
-	<div class="border-t border-gray-100 bg-gray-50 px-5 py-3">
-		<div class="flex items-center justify-between text-xs text-gray-500">
-			<span>Created {formatDate(project.created_at)}</span>
-			<div class="flex items-center space-x-2">
-				{#if tasks !== null}
-					<span class="flex items-center">
-						<svg class="mr-1 h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
-							<path
-								fill-rule="evenodd"
-								d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
-								clip-rule="evenodd"
-							/>
-						</svg>
-						{totalTasks}
-					</span>
-				{/if}
-				<svg
-					class="h-3 w-3 text-gray-400 transition-colors group-hover:text-indigo-500"
-					fill="none"
-					stroke="currentColor"
-					viewBox="0 0 24 24"
-				>
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-				</svg>
-			</div>
-		</div>
 	</div>
 </div>
