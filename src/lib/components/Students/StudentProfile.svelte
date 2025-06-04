@@ -3,11 +3,20 @@
 	import { createEventDispatcher } from 'svelte';
 
 	// Props
-	const { student, groups = [], projects = [], tasks = [] } = $props<{
+	const { 
+		student, 
+		groups = [], 
+		groupStats = [],
+		tasks = [], 
+		collaborators = [],
+		stats = {}
+	} = $props<{
 		student: any;
 		groups?: any[];
-		projects?: any[];
+		groupStats?: any[];
 		tasks?: any[];
+		collaborators?: any[];
+		stats?: any;
 	}>();
 
 	// Events
@@ -15,11 +24,6 @@
 
 	// Local state
 	let isEditing = $state(false);
-
-	// Computed values
-	const activeTasks = $derived(tasks.filter(t => t.status !== 'completed'));
-	const completedTasks = $derived(tasks.filter(t => t.status === 'completed'));
-	const groupNames = $derived(groups.map(g => g.groups.name).join(', '));
 
 	// Event handlers
 	function handleEdit() {
@@ -58,6 +62,24 @@
 		});
 	}
 
+	function getRelativeDate(dateString: string): string {
+		const date = new Date(dateString);
+		const now = new Date();
+		const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+		
+		if (diffInSeconds < 60) return 'just now';
+		if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`;
+		if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
+		
+		const diffInDays = Math.floor(diffInSeconds / 86400);
+		if (diffInDays === 1) return 'yesterday';
+		if (diffInDays < 7) return `${diffInDays} days ago`;
+		if (diffInDays < 14) return '1 week ago';
+		if (diffInDays < 30) return `${Math.floor(diffInDays / 7)} weeks ago`;
+		if (diffInDays < 60) return '1 month ago';
+		return `${Math.floor(diffInDays / 30)} months ago`;
+	}
+
 	function getStatusColor(status: string): string {
 		return status === 'present' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
 	}
@@ -65,12 +87,46 @@
 	function getTaskStatusColor(status: string): string {
 		switch (status) {
 			case 'completed':
-				return 'bg-green-100 text-green-800';
+				return 'bg-green-100 text-green-800 border-green-200';
 			case 'in-progress':
-				return 'bg-blue-100 text-blue-800';
+				return 'bg-blue-100 text-blue-800 border-blue-200';
 			default:
-				return 'bg-gray-100 text-gray-800';
+				return 'bg-gray-100 text-gray-800 border-gray-200';
 		}
+	}
+
+	function getTaskStatusIcon(status: string): string {
+		switch (status) {
+			case 'completed':
+				return '✅';
+			case 'in-progress':
+				return '🔄';
+			default:
+				return '📝';
+		}
+	}
+
+	function navigateToTask(task: any) {
+		// Navigate to project page - the project detail page should handle highlighting the specific task
+		window.location.href = `/projects/${task.projects.id}`;
+	}
+
+	function navigateToGroup(groupId: string) {
+		window.location.href = `/groups/${groupId}`;
+	}
+
+	function navigateToCollaborator(collaboratorId: string) {
+		window.location.href = `/students/${collaboratorId}`;
+	}
+
+	// Get group stats for a specific group
+	function getGroupStats(groupId: string) {
+		return groupStats.find(gs => gs.group_id === groupId) || {
+			member_count: 0,
+			teacher_count: 0,
+			student_count: 0,
+			recent_activity_count: 0
+		};
 	}
 </script>
 
@@ -95,7 +151,7 @@
 							{student.status}
 						</span>
 						<span class="text-indigo-100 text-sm">
-							Student ID: {student.id.split('-')[0]}...
+							Added {getRelativeDate(student.created_at)}
 						</span>
 					</div>
 				</div>
@@ -197,79 +253,153 @@
 
 	<!-- Content -->
 	<div class="p-6">
-		<!-- Quick Stats -->
-		<div class="grid grid-cols-1 gap-4 sm:grid-cols-4 mb-8">
-			<div class="bg-gray-50 p-4 rounded-lg">
-				<div class="text-2xl font-bold text-gray-900">{groups.length}</div>
-				<div class="text-sm text-gray-500">Groups</div>
+		<!-- Enhanced Stats Grid -->
+		<div class="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-6 mb-8">
+			<div class="bg-blue-50 p-4 rounded-lg text-center">
+				<div class="text-2xl font-bold text-blue-600">{stats.total_tasks || 0}</div>
+				<div class="text-sm text-gray-600">Total Tasks</div>
 			</div>
-			<div class="bg-gray-50 p-4 rounded-lg">
-				<div class="text-2xl font-bold text-gray-900">{projects.length}</div>
-				<div class="text-sm text-gray-500">Projects</div>
+			
+			<div class="bg-green-50 p-4 rounded-lg text-center">
+				<div class="text-2xl font-bold text-green-600">{stats.completed_tasks || 0}</div>
+				<div class="text-sm text-gray-600">Completed</div>
 			</div>
-			<div class="bg-gray-50 p-4 rounded-lg">
-				<div class="text-2xl font-bold text-indigo-600">{activeTasks.length}</div>
-				<div class="text-sm text-gray-500">Active Tasks</div>
+			
+			<div class="bg-purple-50 p-4 rounded-lg text-center">
+				<div class="text-2xl font-bold text-purple-600">{stats.completion_rate || 0}%</div>
+				<div class="text-sm text-gray-600">Success Rate</div>
 			</div>
-			<div class="bg-gray-50 p-4 rounded-lg">
-				<div class="text-2xl font-bold text-green-600">{completedTasks.length}</div>
-				<div class="text-sm text-gray-500">Completed</div>
+			
+			<div class="bg-orange-50 p-4 rounded-lg text-center">
+				<div class="text-2xl font-bold text-orange-600">{stats.in_progress_tasks || 0}</div>
+				<div class="text-sm text-gray-600">In Progress</div>
+			</div>
+			
+			<div class="bg-indigo-50 p-4 rounded-lg text-center">
+				<div class="text-2xl font-bold text-indigo-600">{stats.completion_streak || 0}</div>
+				<div class="text-sm text-gray-600">Streak</div>
+			</div>
+			
+			<div class="bg-pink-50 p-4 rounded-lg text-center">
+				<div class="text-2xl font-bold text-pink-600">{stats.collaborator_count || 0}</div>
+				<div class="text-sm text-gray-600">Collaborators</div>
 			</div>
 		</div>
 
-		<!-- Details -->
+		<!-- Additional Stats Row -->
+		<div class="grid grid-cols-1 gap-4 sm:grid-cols-3 mb-8">
+			{#if stats.last_completed_task}
+				<div class="bg-gray-50 p-4 rounded-lg">
+					<div class="text-sm font-medium text-gray-700">Last Completed</div>
+					<div class="text-lg font-semibold text-gray-900 truncate">{stats.last_completed_task.title}</div>
+					<div class="text-sm text-gray-500">
+						{getRelativeDate(stats.last_completed_task.updated_at)}
+					</div>
+				</div>
+			{/if}
+			
+			{#if stats.most_active_group}
+				<div class="bg-gray-50 p-4 rounded-lg">
+					<div class="text-sm font-medium text-gray-700">Most Active Group</div>
+					<div class="text-lg font-semibold text-gray-900">{stats.most_active_group.name}</div>
+					<div class="text-sm text-gray-500">
+						{stats.most_active_group.task_count} tasks
+					</div>
+				</div>
+			{/if}
+			
+			<div class="bg-gray-50 p-4 rounded-lg">
+				<div class="text-sm font-medium text-gray-700">Workload Distribution</div>
+				<div class="text-lg font-semibold text-gray-900">{groups.length} groups</div>
+				<div class="text-sm text-gray-500">
+					{stats.tasks_by_project?.length || 0} projects
+				</div>
+			</div>
+		</div>
+
+		<!-- Two Column Layout -->
 		<div class="grid grid-cols-1 gap-8 lg:grid-cols-2">
 			<!-- Left Column -->
 			<div class="space-y-6">
-				<!-- Basic Information -->
+				<!-- Group Cards -->
 				<div>
-					<h3 class="text-lg font-medium text-gray-900 mb-4">Basic Information</h3>
-					<dl class="space-y-3">
-						<div>
-							<dt class="text-sm font-medium text-gray-500">Full Name</dt>
-							<dd class="text-sm text-gray-900">{student.first_name} {student.last_initial}</dd>
+					<h3 class="text-lg font-medium text-gray-900 mb-4">Groups ({groups.length})</h3>
+					{#if groups.length === 0}
+						<div class="text-center py-8 bg-gray-50 rounded-lg">
+							<div class="text-gray-400 mb-2">👥</div>
+							<p class="text-sm text-gray-500">Not assigned to any groups yet.</p>
 						</div>
-						<div>
-							<dt class="text-sm font-medium text-gray-500">Current Status</dt>
-							<dd class="text-sm text-gray-900">
-								<span class={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(student.status)}`}>
-									{student.status}
-								</span>
-							</dd>
-						</div>
-						<div>
-							<dt class="text-sm font-medium text-gray-500">Groups</dt>
-							<dd class="text-sm text-gray-900">
-								{groupNames || 'No groups assigned'}
-							</dd>
-						</div>
-						<div>
-							<dt class="text-sm font-medium text-gray-500">Added Date</dt>
-							<dd class="text-sm text-gray-900">{formatDate(student.created_at)}</dd>
-						</div>
-					</dl>
-				</div>
-
-				<!-- Active Tasks -->
-				{#if activeTasks.length > 0}
-					<div>
-						<h3 class="text-lg font-medium text-gray-900 mb-4">Active Tasks</h3>
+					{:else}
 						<div class="space-y-3">
-							{#each activeTasks as task}
-								<div class="border border-gray-200 rounded-lg p-4">
+							{#each groups as groupMembership}
+								{@const groupStats = getGroupStats(groupMembership.groups.id)}
+								<div 
+									class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer bg-white hover:bg-gray-50"
+									on:click={() => navigateToGroup(groupMembership.groups.id)}
+									role="button"
+									tabindex="0"
+									on:keydown={(e) => e.key === 'Enter' && navigateToGroup(groupMembership.groups.id)}
+								>
 									<div class="flex items-start justify-between">
 										<div class="min-w-0 flex-1">
-											<h4 class="text-sm font-medium text-gray-900">{task.title}</h4>
-											{#if task.description}
-												<p class="text-sm text-gray-500 mt-1">{task.description}</p>
+											<h4 class="text-lg font-medium text-gray-900">{groupMembership.groups.name}</h4>
+											{#if groupMembership.groups.description}
+												<p class="text-sm text-gray-600 mt-1">{groupMembership.groups.description}</p>
 											{/if}
-											<p class="text-xs text-gray-400 mt-2">
-												Project: {task.projects.title}
-											</p>
+											<div class="flex items-center space-x-4 mt-2 text-sm text-gray-500">
+												<span>{groupStats.student_count} students</span>
+												<span>{groupStats.teacher_count} teachers</span>
+												{#if groupStats.recent_activity_count > 0}
+													<span class="text-green-600">{groupStats.recent_activity_count} recent tasks</span>
+												{/if}
+											</div>
 										</div>
-										<span class={`ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getTaskStatusColor(task.status)}`}>
-											{task.status}
-										</span>
+										<div class="ml-4 flex-shrink-0">
+											<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+												Member since {getRelativeDate(groupMembership.created_at)}
+											</span>
+										</div>
+									</div>
+								</div>
+							{/each}
+						</div>
+					{/if}
+				</div>
+
+				<!-- Collaborators Section -->
+				{#if collaborators.length > 0}
+					<div>
+						<h3 class="text-lg font-medium text-gray-900 mb-4">
+							Collaborators ({collaborators.length})
+						</h3>
+						<div class="space-y-3">
+							{#each collaborators as collaborator}
+								<div 
+									class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer bg-white hover:bg-gray-50"
+									on:click={() => navigateToCollaborator(collaborator.id)}
+									role="button"
+									tabindex="0"
+									on:keydown={(e) => e.key === 'Enter' && navigateToCollaborator(collaborator.id)}
+								>
+									<div class="flex items-center justify-between">
+										<div class="flex items-center space-x-3">
+											<div class="h-10 w-10 bg-gray-100 rounded-full flex items-center justify-center">
+												<span class="text-sm font-medium text-gray-700">
+													{collaborator.first_name.charAt(0).toUpperCase()}{collaborator.last_initial.toUpperCase()}
+												</span>
+											</div>
+											<div>
+												<h4 class="text-sm font-medium text-gray-900">
+													{collaborator.first_name} {collaborator.last_initial}
+												</h4>
+												<p class="text-xs text-gray-500">
+													{collaborator.shared_task_count} shared task{collaborator.shared_task_count !== 1 ? 's' : ''}
+												</p>
+											</div>
+										</div>
+										<div class="text-xs text-gray-400">
+											→
+										</div>
 									</div>
 								</div>
 							{/each}
@@ -280,78 +410,54 @@
 
 			<!-- Right Column -->
 			<div class="space-y-6">
-				<!-- Projects -->
-				{#if projects.length > 0}
-					<div>
-						<h3 class="text-lg font-medium text-gray-900 mb-4">Projects ({projects.length})</h3>
-						<div class="space-y-3">
-							{#each projects as project}
-								<div class="border border-gray-200 rounded-lg p-4">
+				<!-- Task Cards -->
+				<div>
+					<h3 class="text-lg font-medium text-gray-900 mb-4">
+						Tasks ({tasks.length})
+					</h3>
+					{#if tasks.length === 0}
+						<div class="text-center py-8 bg-gray-50 rounded-lg">
+							<div class="text-gray-400 mb-2">📋</div>
+							<p class="text-sm text-gray-500">No tasks assigned yet.</p>
+						</div>
+					{:else}
+						<div class="space-y-3 max-h-96 overflow-y-auto">
+							{#each tasks as task}
+								<div 
+									class="border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer bg-white hover:bg-gray-50 {getTaskStatusColor(task.status)}"
+									on:click={() => navigateToTask(task)}
+									role="button"
+									tabindex="0"
+									on:keydown={(e) => e.key === 'Enter' && navigateToTask(task)}
+								>
 									<div class="flex items-start justify-between">
 										<div class="min-w-0 flex-1">
-											<h4 class="text-sm font-medium text-gray-900">{project.title}</h4>
-											{#if project.description}
-												<p class="text-sm text-gray-500 mt-1">{project.description}</p>
+											<div class="flex items-center space-x-2 mb-2">
+												<span class="text-lg">{getTaskStatusIcon(task.status)}</span>
+												<h4 class="text-sm font-medium text-gray-900">{task.title}</h4>
+											</div>
+											{#if task.description}
+												<p class="text-sm text-gray-600 mb-2 line-clamp-2">{task.description}</p>
 											{/if}
-											<p class="text-xs text-gray-400 mt-2">
-												Group: {project.groups.name}
-											</p>
+											<div class="flex items-center space-x-2 text-xs text-gray-500">
+												<span class="font-medium">{task.projects.title}</span>
+												<span>•</span>
+												<span>{task.projects.groups.name}</span>
+												<span>•</span>
+												<span>Updated {getRelativeDate(task.updated_at)}</span>
+											</div>
 										</div>
-										<span class={`ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${
-											project.status === 'active' 
-												? 'bg-green-100 text-green-800'
-												: project.status === 'completed'
-													? 'bg-blue-100 text-blue-800'
-													: 'bg-gray-100 text-gray-800'
-										}`}>
-											{project.status}
-										</span>
+										<div class="ml-4 flex-shrink-0">
+											<span class={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getTaskStatusColor(task.status)}`}>
+												{task.status}
+											</span>
+										</div>
 									</div>
 								</div>
 							{/each}
 						</div>
-					</div>
-				{/if}
-
-				<!-- Completed Tasks -->
-				{#if completedTasks.length > 0}
-					<div>
-						<h3 class="text-lg font-medium text-gray-900 mb-4">Recent Completed Tasks</h3>
-						<div class="space-y-3">
-							{#each completedTasks.slice(0, 5) as task}
-								<div class="border border-gray-200 rounded-lg p-4 opacity-75">
-									<div class="flex items-start justify-between">
-										<div class="min-w-0 flex-1">
-											<h4 class="text-sm font-medium text-gray-900 line-through">{task.title}</h4>
-											<p class="text-xs text-gray-400 mt-2">
-												Completed: {formatDate(task.updated_at)}
-											</p>
-										</div>
-										<span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-											completed
-										</span>
-									</div>
-								</div>
-							{/each}
-							{#if completedTasks.length > 5}
-								<p class="text-sm text-gray-500 text-center">
-									And {completedTasks.length - 5} more completed tasks...
-								</p>
-							{/if}
-						</div>
-					</div>
-				{/if}
-
-				<!-- Empty States -->
-				{#if projects.length === 0 && tasks.length === 0}
-					<div class="text-center py-8">
-						<div class="text-gray-400 mb-2">📚</div>
-						<p class="text-sm text-gray-500">
-							This student hasn't been assigned to any projects or tasks yet.
-						</p>
-					</div>
-				{/if}
-			</div>
+					{/if}
+				</div>
 		</div>
 	</div>
 </div>
