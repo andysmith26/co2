@@ -8,11 +8,13 @@ interface Student {
   first_name: string;
   last_initial: string;
   status: string;
+  created_at: string;
 }
 
 class StudentStore {
   // Use $state for reactive properties
   studentList = $state<Student[]>([]);
+  currentStudent = $state<Student | null>(null); // For profile page
   loading = $state(false);
   error = $state<string | null>(null);
   
@@ -66,9 +68,123 @@ class StudentStore {
       console.log('🐛 DEBUG: fetchStudents completed, loading set to false');
     }
   }
+
+  // NEW: Fetch individual student by ID
+  async fetchStudentById(studentId: string) {
+    console.log('🔄 StudentStore: Fetching student by ID:', studentId);
+    this.loading = true;
+    this.error = null;
+    
+    try {
+      const response = await fetch(`/api/students/${studentId}`);
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch student');
+      }
+      
+      const student = await response.json();
+      console.log('✅ StudentStore: Fetched student:', student);
+      
+      // Update current student and also update in list if present
+      this.currentStudent = student;
+      this.studentList = this.studentList.map(s => 
+        s.id === studentId ? student : s
+      );
+      
+      return student;
+    } catch (err: any) {
+      console.error('❌ StudentStore: Error fetching student:', err);
+      this.error = err.message;
+      throw err;
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  // NEW: Update student
+  async updateStudent(studentId: string, updates: Partial<Student>) {
+    console.log('🔄 StudentStore: Updating student:', studentId, updates);
+    this.loading = true;
+    this.error = null;
+    
+    try {
+      const response = await fetch(`/api/students/${studentId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update student');
+      }
+      
+      const updatedStudent = await response.json();
+      console.log('✅ StudentStore: Updated student:', updatedStudent);
+      
+      // Update local state
+      this.currentStudent = updatedStudent;
+      this.studentList = this.studentList.map(s => 
+        s.id === studentId ? updatedStudent : s
+      );
+      
+      return updatedStudent;
+    } catch (err: any) {
+      console.error('❌ StudentStore: Error updating student:', err);
+      this.error = err.message;
+      throw err;
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  // NEW: Delete student
+  async deleteStudent(studentId: string) {
+    console.log('🔄 StudentStore: Deleting student:', studentId);
+    this.loading = true;
+    this.error = null;
+    
+    try {
+      const response = await fetch(`/api/students/${studentId}`, {
+        method: 'DELETE'
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete student');
+      }
+      
+      console.log('✅ StudentStore: Deleted student:', studentId);
+      
+      // Update local state
+      this.studentList = this.studentList.filter(s => s.id !== studentId);
+      if (this.currentStudent?.id === studentId) {
+        this.currentStudent = null;
+      }
+      
+      return true;
+    } catch (err: any) {
+      console.error('❌ StudentStore: Error deleting student:', err);
+      this.error = err.message;
+      throw err;
+    } finally {
+      this.loading = false;
+    }
+  }
   
   getStudents() {
     return this.studentList;
+  }
+
+  // NEW: Get current student
+  getCurrentStudent() {
+    return this.currentStudent;
+  }
+
+  // NEW: Get student by ID from local state
+  getStudentById(studentId: string) {
+    return this.studentList.find(s => s.id === studentId);
   }
   
   async toggleStudentStatus(studentId: string) {
@@ -99,10 +215,18 @@ class StudentStore {
         throw new Error(errorData.error || 'Failed to update student status');
       }
       
+      const updatedStudent = await response.json();
+      
       // Update local state
       this.studentList = this.studentList.map(s => 
-        s.id === studentId ? {...s, status: newStatus} : s
+        s.id === studentId ? updatedStudent : s
       );
+      
+      // Update current student if it's the same
+      if (this.currentStudent?.id === studentId) {
+        this.currentStudent = updatedStudent;
+      }
+      
       console.log('🐛 DEBUG: Local state updated after status toggle');
     } catch (err: any) {
       console.error('🐛 DEBUG: toggleStudentStatus error:', err);
