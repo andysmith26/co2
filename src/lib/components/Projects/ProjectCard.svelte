@@ -86,7 +86,7 @@
 				{/if}
 			</div>
 
-			<!-- Status Badge -->
+			<!-- Status Badge
 			<span
 				class="ml-3 inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium {statusColors[
 					project.status
@@ -94,6 +94,7 @@
 			>
 				{project.status}
 			</span>
+ -->
 		</div>
 
 		<!-- Tasks Section -->
