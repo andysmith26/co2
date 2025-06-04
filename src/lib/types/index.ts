@@ -1,12 +1,22 @@
+// src/lib/types/index.ts (Updated to prevent conflicts)
+
 // Import constants to use in type definitions
 import { TASK_STATUS, STUDENT_STATUS, DIFFICULTY_LEVELS, TASK_CATEGORIES, VIEW_MODES, GROUP_MEMBER_ROLES } from '../constants';
 
-// Student type definition
+// Core Student type definition
 export interface Student {
-  id: number;
-  name: string;
-  status: typeof STUDENT_STATUS[keyof typeof STUDENT_STATUS];
-  currentTask: number | null;
+  id: string;
+  first_name: string;
+  last_initial: string;
+  teacher_id: string;
+  status: 'present' | 'absent';
+  created_at: string;
+  updated_at?: string;
+}
+
+// Enhanced Student interface for profile data
+export interface StudentProfile extends Student {
+  // Additional computed fields can be added here
 }
 
 // Group type definition
@@ -38,35 +48,6 @@ export interface Teacher {
   email: string;
   first_name?: string;
   last_name?: string;
-}
-
-// Task type definition
-export interface Task {
-  id: string;
-  project_id: string;
-  title: string;
-  description?: string | null;
-  status: typeof TASK_STATUS[keyof typeof TASK_STATUS];
-  assignee_id?: string | null;        // For teacher assignees (ID)
-  student_assignee_id?: string | null; // For student assignees (ID)
-  assignee_type?: 'teacher' | 'student' | null; // Indicates which assignee field is being used
-  created_at: string;
-  updated_at: string;
-  
-  // Populated assignee objects (added by API)
-  assignee?: {
-    id: string;
-    first_name: string;
-    last_name: string;
-    role: string;
-  } | null;
-  
-  student_assignee?: {
-    id: string;
-    first_name: string;
-    last_initial: string;
-    role: string;
-  } | null;
 }
 
 // View mode type
@@ -111,6 +92,14 @@ export const TASK_STATUS = {
   COMPLETED: 'completed'
 } as const;
 
+// Resource Types
+export const RESOURCE_TYPES = {
+  LINK: 'LINK',
+  FILE: 'FILE',
+  VIDEO: 'VIDEO',
+  DOCUMENT: 'DOCUMENT'
+} as const;
+
 // Project type definition
 export interface Project {
   id: string;
@@ -123,16 +112,64 @@ export interface Project {
   updated_at: string;
 }
 
-// Task type definition
+// Task type definition (avoiding duplication)
 export interface Task {
   id: string;
   project_id: string;
   title: string;
   description?: string | null;
   status: typeof TASK_STATUS[keyof typeof TASK_STATUS];
-  assignee_id?: string | null;        // For teacher assignees
-  student_assignee_id?: string | null; // For student assignees
-  assignee_type?: 'teacher' | 'student' | null; // Indicates which assignee field is being used
+  assignee_id?: string | null;
+  student_assignee_id?: string | null;
+  assignee_type?: 'teacher' | 'student' | null;
   created_at: string;
   updated_at: string;
+  
+  // Populated assignee objects (added by API)
+  assignee?: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    role: string;
+  } | null;
+  
+  student_assignee?: {
+    id: string;
+    first_name: string;
+    last_initial: string;
+    role: string;
+  } | null;
+}
+
+// Resource type definition
+export interface Resource {
+  id: string;
+  type: typeof RESOURCE_TYPES[keyof typeof RESOURCE_TYPES];
+  title: string;
+  description?: string | null;
+  url: string;
+  group_id?: string | null;
+  student_id?: string | null;
+  created_by: string;
+  created_at: string;
+  updated_at?: string;
+  
+  // Enhanced fields (from joins/API)
+  creator?: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+  } | null;
+  
+  // For project-linked resources
+  link_id?: string;
+  linked_at?: string;
+  linked_by?: string;
+  linker?: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+  } | null;
 }
