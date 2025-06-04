@@ -1,5 +1,10 @@
 // src/lib/types/student.ts
-export interface Student {
+
+// Re-export from main types to avoid conflicts
+export type { Student, Group, Task } from '../types';
+
+// Student-specific interfaces
+export interface StudentExtended {
   id: string;
   first_name: string;
   last_initial: string;
