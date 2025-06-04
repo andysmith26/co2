@@ -6,6 +6,7 @@
 	import ProjectsFilters from '$lib/components/Projects/ProjectsFilters.svelte';
 	import ProjectList from '$lib/components/Projects/ProjectList.svelte';
 	import ProjectForm from '$lib/components/Projects/ProjectForm.svelte';
+	import AnnouncementsSidebar from '$lib/components/Projects/AnnouncementsSidebar.svelte';
 	import { projectStore } from '$lib/stores/projects.svelte.ts';
 	import { groupStore } from '$lib/stores/groups.svelte.ts';
 
@@ -143,70 +144,91 @@
 	<title>Projects | CO2</title>
 </svelte:head>
 
-<div class="container-fluid p-4">
-	<!-- Header with Stats and Refresh -->
-	<ProjectsHeader
-		projectCount={projects.length}
-		taskCount={totalTaskCount}
-		{loading}
-		on:refresh={handleRefresh}
-	/>
+<!-- Main layout with sidebar -->
+<div class="flex h-screen bg-gray-50">
+	<!-- Announcements Sidebar - Desktop/Tablet -->
+	<div class="hidden md:flex md:w-[30%] md:flex-shrink-0">
+		<AnnouncementsSidebar />
+	</div>
 
-	<!-- Error Display -->
-	{#if error}
-		<div class="alert alert-error mb-4">
-			<svg
-				xmlns="http://www.w3.org/2000/svg"
-				class="h-6 w-6 shrink-0 stroke-current"
-				fill="none"
-				viewBox="0 0 24 24"
-			>
-				<path
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					stroke-width="2"
-					d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
-				/>
-			</svg>
-			<span>{error}</span>
-			<button on:click={() => (error = null)} class="float-right">&times;</button>
-		</div>
-	{/if}
-
-	<!-- Filters and Create Button -->
-	<ProjectsFilters
-		{groups}
-		{selectedGroupId}
-		{groupsLoading}
-		{showCreateForm}
-		on:groupChange={handleGroupChange}
-		on:createProject={handleShowCreateForm}
-	/>
-
-	<!-- Create Project Form -->
-	{#if showCreateForm}
-		<div class="mb-6">
-			<ProjectForm on:submit={handleCreateProject} on:cancel={handleCancelCreate} />
-		</div>
-	{/if}
-
-	<!-- Loading indicator for initial load -->
-	{#if loading && projects.length === 0}
-		<div class="flex justify-center py-12">
-			<div class="text-center">
-				<span class="loading loading-spinner loading-lg"></span>
-				<p class="mt-4 text-gray-600">Loading projects...</p>
+	<!-- Main content area -->
+	<div class="flex flex-1 flex-col overflow-hidden">
+		<!-- Mobile announcements (top section) -->
+		<div class="md:hidden border-b border-gray-200 bg-white">
+			<div class="max-h-48 overflow-y-auto">
+				<AnnouncementsSidebar />
 			</div>
 		</div>
-	{:else}
-		<!-- Projects List with Progressive Task Loading -->
-		<ProjectList
-			{projects}
-			{loading}
-			showGroupName={!selectedGroupId}
-			{tasksMap}
-			{tasksLoadingSet}
-			on:select={handleSelectProject}
-		/>
-	{/if}
+
+		<!-- Projects content -->
+		<div class="flex-1 overflow-y-auto">
+			<div class="container-fluid p-4">
+				<!-- Header with Stats and Refresh -->
+				<ProjectsHeader
+					projectCount={projects.length}
+					taskCount={totalTaskCount}
+					{loading}
+					on:refresh={handleRefresh}
+				/>
+
+				<!-- Error Display -->
+				{#if error}
+					<div class="alert alert-error mb-4">
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							class="h-6 w-6 shrink-0 stroke-current"
+							fill="none"
+							viewBox="0 0 24 24"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+							/>
+						</svg>
+						<span>{error}</span>
+						<button on:click={() => (error = null)} class="float-right">&times;</button>
+					</div>
+				{/if}
+
+				<!-- Filters and Create Button -->
+				<ProjectsFilters
+					{groups}
+					{selectedGroupId}
+					{groupsLoading}
+					{showCreateForm}
+					on:groupChange={handleGroupChange}
+					on:createProject={handleShowCreateForm}
+				/>
+
+				<!-- Create Project Form -->
+				{#if showCreateForm}
+					<div class="mb-6">
+						<ProjectForm on:submit={handleCreateProject} on:cancel={handleCancelCreate} />
+					</div>
+				{/if}
+
+				<!-- Loading indicator for initial load -->
+				{#if loading && projects.length === 0}
+					<div class="flex justify-center py-12">
+						<div class="text-center">
+							<span class="loading loading-spinner loading-lg"></span>
+							<p class="mt-4 text-gray-600">Loading projects...</p>
+						</div>
+					</div>
+				{:else}
+					<!-- Projects List with Progressive Task Loading -->
+					<ProjectList
+						{projects}
+						{loading}
+						showGroupName={!selectedGroupId}
+						{tasksMap}
+						{tasksLoadingSet}
+						on:select={handleSelectProject}
+					/>
+				{/if}
+			</div>
+		</div>
+	</div>
 </div>
