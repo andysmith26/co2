@@ -1,7 +1,16 @@
-// src/lib/types/index.ts (Updated to prevent conflicts)
+// src/lib/types/index.ts
 
 // Import constants to use in type definitions
-import { TASK_STATUS, STUDENT_STATUS, DIFFICULTY_LEVELS, TASK_CATEGORIES, VIEW_MODES, GROUP_MEMBER_ROLES } from '../constants';
+import { 
+  TASK_STATUS, 
+  STUDENT_STATUS, 
+  DIFFICULTY_LEVELS, 
+  TASK_CATEGORIES, 
+  VIEW_MODES, 
+  GROUP_MEMBER_ROLES,
+  PROJECT_STATUS,
+  RESOURCE_TYPES
+} from '../constants';
 
 // Core Student type definition
 export interface Student {
@@ -78,28 +87,6 @@ export interface TaskCardProps {
   compact?: boolean;
 }
 
-// Project Status Constants
-export const PROJECT_STATUS = {
-  ACTIVE: 'active',
-  COMPLETED: 'completed',
-  ARCHIVED: 'archived'
-} as const;
-
-// Task Status Constants 
-export const TASK_STATUS = {
-  TODO: 'todo',
-  IN_PROGRESS: 'in-progress',
-  COMPLETED: 'completed'
-} as const;
-
-// Resource Types
-export const RESOURCE_TYPES = {
-  LINK: 'LINK',
-  FILE: 'FILE',
-  VIDEO: 'VIDEO',
-  DOCUMENT: 'DOCUMENT'
-} as const;
-
 // Project type definition
 export interface Project {
   id: string;
@@ -112,7 +99,7 @@ export interface Project {
   updated_at: string;
 }
 
-// Task type definition (avoiding duplication)
+// Task type definition
 export interface Task {
   id: string;
   project_id: string;

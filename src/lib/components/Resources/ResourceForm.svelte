@@ -1,14 +1,18 @@
 <!-- src/lib/components/Resources/ResourceForm.svelte -->
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
-	import type { Resource, Group } from '../../types';
-	import { RESOURCE_TYPES } from '../../constants';
+	import { RESOURCE_TYPES } from '$lib/constants';
+	import type { Resource, Group } from '$lib/types';
+	import ImageUploadWidget from './ImageUploadWidget.svelte';
+	import type { CloudinaryUploadResult } from '$lib/utils/cloudinary';
 
 	// Props
-	const { groups = [], initialResource = null } = $props<{
-		groups?: Group[];
+	interface Props {
+		groups: Group[];
 		initialResource?: Resource | null;
-	}>();
+	}
+
+	let { groups, initialResource = null }: Props = $props();
 
 	// State
 	let type: string = $state(initialResource?.type || RESOURCE_TYPES.LINK);
@@ -18,6 +22,10 @@
 	let groupId: string = $state(initialResource?.group_id || '');
 	let error: string | null = $state(null);
 	let isSubmitting: boolean = $state(false);
+
+	// Image upload specific state
+	let uploadedImageUrl: string | null = $state(null);
+	let hasImageUpload: boolean = $state(false);
 
 	// Events
 	const dispatch = createEventDispatcher();
@@ -30,14 +38,38 @@
 			description = initialResource.description || '';
 			url = initialResource.url;
 			groupId = initialResource.group_id || '';
+			uploadedImageUrl = null;
+			hasImageUpload = false;
 		} else {
 			type = RESOURCE_TYPES.LINK;
 			title = '';
 			description = '';
 			url = '';
 			groupId = '';
+			uploadedImageUrl = null;
+			hasImageUpload = false;
 		}
 	});
+
+	// Watch type changes to reset form state appropriately
+	$effect(() => {
+		if (type === RESOURCE_TYPES.IMAGE) {
+			// Clear URL when switching to image type
+			if (!initialResource) {
+				url = '';
+			}
+		} else if (type === RESOURCE_TYPES.LINK) {
+			// Clear uploaded image when switching to link type
+			uploadedImageUrl = null;
+			hasImageUpload = false;
+		}
+	});
+
+	// Computed values
+	const isImageType = $derived(type === RESOURCE_TYPES.IMAGE);
+	const currentImageUrl = $derived(
+		isImageType ? uploadedImageUrl || initialResource?.url || null : null
+	);
 
 	// Methods
 	function validateForm() {
@@ -48,17 +80,28 @@
 			return false;
 		}
 
-		if (!url.trim()) {
-			error = 'Resource URL is required';
-			return false;
-		}
-
-		// Basic URL validation for LINK type
 		if (type === RESOURCE_TYPES.LINK) {
+			if (!url.trim()) {
+				error = 'Resource URL is required';
+				return false;
+			}
+
+			// Basic URL validation for LINK type
 			try {
 				new URL(url);
 			} catch {
 				error = 'Please enter a valid URL (e.g., https://example.com)';
+				return false;
+			}
+		} else if (type === RESOURCE_TYPES.IMAGE) {
+			// For new image resources, require an upload
+			if (!initialResource && !uploadedImageUrl) {
+				error = 'Please upload an image';
+				return false;
+			}
+			// For existing image resources, either keep current or have new upload
+			if (initialResource && !initialResource.url && !uploadedImageUrl) {
+				error = 'Please upload an image';
 				return false;
 			}
 		}
@@ -73,11 +116,14 @@
 		isSubmitting = true;
 
 		try {
+			// For image resources, use the uploaded image URL or keep existing
+			const finalUrl = isImageType ? uploadedImageUrl || initialResource?.url || '' : url;
+
 			console.log('🔄 ResourceForm SUBMIT:', {
 				resourceId: initialResource?.id,
 				type,
 				title,
-				url,
+				url: finalUrl,
 				description,
 				group_id: groupId,
 			});
@@ -86,7 +132,7 @@
 				resourceId: initialResource?.id,
 				type,
 				title,
-				url,
+				url: finalUrl,
 				description: description || undefined,
 				group_id: groupId || undefined,
 			});
@@ -98,6 +144,8 @@
 				url = '';
 				groupId = '';
 				type = RESOURCE_TYPES.LINK;
+				uploadedImageUrl = null;
+				hasImageUpload = false;
 			}
 		} catch (err) {
 			if (err instanceof Error) {
@@ -115,7 +163,7 @@
 		dispatch('cancel');
 	}
 
-	// Auto-format URL
+	// Auto-format URL for links
 	function handleUrlBlur() {
 		if (url && type === RESOURCE_TYPES.LINK) {
 			// Auto-add https:// if no protocol is specified
@@ -123,6 +171,26 @@
 				url = 'https://' + url;
 			}
 		}
+	}
+
+	// Handle image upload
+	function handleImageUpload(event: CustomEvent<CloudinaryUploadResult>) {
+		const result = event.detail;
+		uploadedImageUrl = result.secure_url;
+		hasImageUpload = true;
+		error = null;
+
+		// Auto-generate title from filename if title is empty
+		if (!title.trim()) {
+			// Extract filename from public_id
+			const parts = result.public_id.split('/');
+			const filename = parts[parts.length - 1];
+			title = filename.replace(/[_-]/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+		}
+	}
+
+	function handleImageUploadError(event: CustomEvent<string>) {
+		error = event.detail;
 	}
 </script>
 
@@ -150,7 +218,7 @@
 					disabled={!!initialResource}
 				>
 					<option value={RESOURCE_TYPES.LINK}>Link</option>
-					<!-- Future resource types can be added here -->
+					<option value={RESOURCE_TYPES.IMAGE}>Image</option>
 				</select>
 				{#if initialResource}
 					<p class="mt-1 text-xs text-gray-500">Resource type cannot be changed after creation</p>
@@ -187,28 +255,46 @@
 				type="text"
 				bind:value={title}
 				class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-				placeholder="Enter resource title"
+				placeholder={isImageType
+					? 'Enter image title (auto-generated from filename)'
+					: 'Enter resource title'}
 				required
 			/>
 		</div>
 
-		<div class="form-control">
-			<label for="resource-url" class="mb-1 block text-sm font-medium text-gray-700"> URL </label>
-			<input
-				id="resource-url"
-				type="url"
-				bind:value={url}
-				on:blur={handleUrlBlur}
-				class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-				placeholder="https://example.com"
-				required
-			/>
-			<p class="mt-1 text-xs text-gray-500">
-				{#if type === RESOURCE_TYPES.LINK}
-					Enter a web URL (https:// will be added automatically if needed)
+		<!-- Conditional URL field for links or Image upload for images -->
+		{#if isImageType}
+			<div class="form-control">
+				<label class="mb-1 block text-sm font-medium text-gray-700"> Image Upload </label>
+				<ImageUploadWidget
+					{currentImageUrl}
+					buttonText={initialResource ? 'Replace Image' : 'Upload Image'}
+					on:upload={handleImageUpload}
+					on:error={handleImageUploadError}
+				/>
+				{#if hasImageUpload || currentImageUrl}
+					<p class="mt-2 text-xs text-green-600">
+						✓ {hasImageUpload ? 'New image uploaded successfully' : 'Current image will be used'}
+					</p>
 				{/if}
-			</p>
-		</div>
+			</div>
+		{:else}
+			<div class="form-control">
+				<label for="resource-url" class="mb-1 block text-sm font-medium text-gray-700"> URL </label>
+				<input
+					id="resource-url"
+					type="url"
+					bind:value={url}
+					on:blur={handleUrlBlur}
+					class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+					placeholder="https://example.com"
+					required
+				/>
+				<p class="mt-1 text-xs text-gray-500">
+					Enter a web URL (https:// will be added automatically if needed)
+				</p>
+			</div>
+		{/if}
 
 		<div class="form-control">
 			<label for="resource-description" class="mb-1 block text-sm font-medium text-gray-700">
@@ -219,7 +305,9 @@
 				bind:value={description}
 				class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
 				rows="3"
-				placeholder="Describe what this resource contains or why it's useful"
+				placeholder={isImageType
+					? 'Describe what this image shows or how it should be used'
+					: "Describe what this resource contains or why it's useful"}
 			></textarea>
 		</div>
 

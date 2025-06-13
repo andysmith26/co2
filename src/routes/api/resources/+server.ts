@@ -3,6 +3,8 @@ import { json } from '@sveltejs/kit';
 import { getSupabase } from '$lib/server/supabase';
 import type { RequestHandler } from './$types';
 import { GROUP_MEMBER_ROLES } from '$lib/constants';
+import { RESOURCE_TYPES } from '$lib/types';
+import { isCloudinaryUrl } from '$lib/utils/cloudinary';
 
 export const GET: RequestHandler = async ({ url, locals }) => {
   try {
@@ -86,35 +88,37 @@ export const GET: RequestHandler = async ({ url, locals }) => {
   }
 };
 
-export const POST: RequestHandler = async ({ request, locals }) => {
+export const POST: RequestHandler = async ({ request, cookies }) => {
   try {
-    const { session } = await locals.getSession();
-    
-    if (!session) {
-      return json({ error: 'Unauthorized' }, { status: 401 });
+    const session = await getSession(cookies);
+    if (!session?.user?.id) {
+      return json({ error: 'Authentication required' }, { status: 401 });
     }
 
     const body = await request.json();
     
-    // Validate input
-    if (!body.title) {
-      return json({ error: 'Resource title is required' }, { status: 400 });
+    // Validate required fields
+    if (!body.type || !body.title || !body.url) {
+      return json({ error: 'Type, title, and URL are required' }, { status: 400 });
     }
-    
-    if (!body.type) {
-      return json({ error: 'Resource type is required' }, { status: 400 });
+
+    // Validate resource type
+    if (!Object.values(RESOURCE_TYPES).includes(body.type)) {
+      return json({ error: 'Invalid resource type' }, { status: 400 });
     }
-    
-    if (!body.url) {
-      return json({ error: 'Resource URL is required' }, { status: 400 });
-    }
-    
-    // Basic URL validation for LINK type
-    if (body.type === 'LINK') {
+
+    // Type-specific validation
+    if (body.type === RESOURCE_TYPES.LINK) {
+      // Validate URL format for links
       try {
         new URL(body.url);
       } catch {
-        return json({ error: 'Invalid URL format' }, { status: 400 });
+        return json({ error: 'Invalid URL format for link resource' }, { status: 400 });
+      }
+    } else if (body.type === RESOURCE_TYPES.IMAGE) {
+      // Validate Cloudinary URL for images
+      if (!isCloudinaryUrl(body.url)) {
+        return json({ error: 'Invalid image URL. Must be a Cloudinary URL.' }, { status: 400 });
       }
     }
     
