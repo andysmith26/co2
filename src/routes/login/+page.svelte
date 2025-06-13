@@ -67,7 +67,7 @@
 
 <script lang="ts">
 	import { invalidate } from '$app/navigation';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 
 	// Use $props rune for component props
 	let { data } = $props();
@@ -81,7 +81,7 @@
 	let error = $state('');
 
 	// Get redirectTo parameter from URL
-	let redirectTo = $derived($page.url.searchParams.get('redirectTo') || '/dashboard');
+	let redirectTo = $derived(page.url.searchParams.get('redirectTo') || '/dashboard');
 
 	async function handleLogin() {
 		loading = true;
@@ -113,7 +113,7 @@
 	<div class="login-card">
 		<h1>Login</h1>
 
-		{#if redirectTo && redirectTo !== '/(dashboard'}
+		{#if redirectTo && redirectTo !== '/dashboard'}
 			<div class="redirect-message">You'll be redirected to your requested page after login.</div>
 		{/if}
 
