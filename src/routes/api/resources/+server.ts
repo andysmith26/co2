@@ -3,7 +3,7 @@ import { json } from '@sveltejs/kit';
 import { getSupabase } from '$lib/server/supabase';
 import type { RequestHandler } from './$types';
 import { GROUP_MEMBER_ROLES } from '$lib/constants';
-import { RESOURCE_TYPES } from '$lib/types';
+import { RESOURCE_TYPES } from '$lib/constants';
 import { isCloudinaryUrl } from '$lib/utils/cloudinary';
 
 export const GET: RequestHandler = async ({ url, locals }) => {
@@ -88,12 +88,12 @@ export const GET: RequestHandler = async ({ url, locals }) => {
   }
 };
 
-export const POST: RequestHandler = async ({ request, cookies }) => {
+export const POST: RequestHandler = async ({ request, locals }) => {
   try {
-    const session = await getSession(cookies);
-    if (!session?.user?.id) {
-      return json({ error: 'Authentication required' }, { status: 401 });
-    }
+const { session } = await locals.getSession();
+if (!session?.user?.id) {
+  return json({ error: 'Authentication required' }, { status: 401 });
+}
 
     const body = await request.json();
     
@@ -115,12 +115,18 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
       } catch {
         return json({ error: 'Invalid URL format for link resource' }, { status: 400 });
       }
-    } else if (body.type === RESOURCE_TYPES.IMAGE) {
-      // Validate Cloudinary URL for images
-      if (!isCloudinaryUrl(body.url)) {
-        return json({ error: 'Invalid image URL. Must be a Cloudinary URL.' }, { status: 400 });
-      }
-    }
+} else if (body.type === RESOURCE_TYPES.IMAGE) {
+  // Add debug logging
+  console.log('🔍 Validating Cloudinary URL:', body.url);
+  console.log('🔍 isCloudinaryUrl result:', isCloudinaryUrl(body.url));
+  
+  // Validate Cloudinary URL for images
+  if (!isCloudinaryUrl(body.url)) {
+    console.log('❌ URL validation failed for:', body.url);
+    return json({ error: 'Invalid image URL. Must be a Cloudinary URL.' }, { status: 400 });
+  }
+  console.log('✅ URL validation passed');
+}
     
     const supabase = getSupabase(session.access_token);
     

@@ -27,6 +27,9 @@
 	let uploadedImageUrl: string | null = $state(null);
 	let hasImageUpload: boolean = $state(false);
 
+	// Component key to force re-mount of ImageUploadWidget when switching types
+	let imageUploadKey = $state(0);
+
 	// Events
 	const dispatch = createEventDispatcher();
 
@@ -49,6 +52,8 @@
 			uploadedImageUrl = null;
 			hasImageUpload = false;
 		}
+		// Reset the component key when resource changes
+		imageUploadKey = Date.now();
 	});
 
 	// Watch type changes to reset form state appropriately
@@ -58,10 +63,14 @@
 			if (!initialResource) {
 				url = '';
 			}
+			// Force re-mount of ImageUploadWidget to avoid widget conflicts
+			imageUploadKey = Date.now();
 		} else if (type === RESOURCE_TYPES.LINK) {
 			// Clear uploaded image when switching to link type
 			uploadedImageUrl = null;
 			hasImageUpload = false;
+			// Also increment key to clean up any existing widgets
+			imageUploadKey = Date.now();
 		}
 	});
 
@@ -102,6 +111,11 @@
 			// For existing image resources, either keep current or have new upload
 			if (initialResource && !initialResource.url && !uploadedImageUrl) {
 				error = 'Please upload an image';
+				return false;
+			}
+			// Validate the uploaded image URL if present
+			if (uploadedImageUrl && !uploadedImageUrl.startsWith('https://')) {
+				error = 'Invalid image URL format';
 				return false;
 			}
 		}
@@ -146,6 +160,7 @@
 				type = RESOURCE_TYPES.LINK;
 				uploadedImageUrl = null;
 				hasImageUpload = false;
+				imageUploadKey = Date.now(); // Reset component
 			}
 		} catch (err) {
 			if (err instanceof Error) {
@@ -175,22 +190,43 @@
 
 	// Handle image upload
 	function handleImageUpload(event: CustomEvent<CloudinaryUploadResult>) {
-		const result = event.detail;
-		uploadedImageUrl = result.secure_url;
-		hasImageUpload = true;
-		error = null;
+		try {
+			const result = event.detail;
 
-		// Auto-generate title from filename if title is empty
-		if (!title.trim()) {
-			// Extract filename from public_id
-			const parts = result.public_id.split('/');
-			const filename = parts[parts.length - 1];
-			title = filename.replace(/[_-]/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+			// Validate the result
+			if (!result.secure_url || !result.public_id) {
+				throw new Error('Invalid upload result received');
+			}
+
+			uploadedImageUrl = result.secure_url;
+			hasImageUpload = true;
+			error = null;
+
+			console.log('✅ Image uploaded successfully in ResourceForm:', result.secure_url);
+
+			// Auto-generate title from filename if title is empty
+			if (!title.trim()) {
+				try {
+					const parts = result.public_id.split('/');
+					const filename = parts[parts.length - 1];
+					title = filename.replace(/[_-]/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+				} catch (titleError) {
+					console.warn('Could not auto-generate title from filename:', titleError);
+					// Fallback title
+					title = 'Uploaded Image';
+				}
+			}
+		} catch (err) {
+			const errorMessage = err instanceof Error ? err.message : 'Failed to process uploaded image';
+			error = errorMessage;
+			console.error('❌ Error processing image upload in ResourceForm:', err);
+			handleImageUploadError(new CustomEvent('error', { detail: errorMessage }));
 		}
 	}
 
 	function handleImageUploadError(event: CustomEvent<string>) {
-		error = event.detail;
+		error = `Image upload failed: ${event.detail}`;
+		console.error('🖼️ Image upload error in ResourceForm:', event.detail);
 	}
 </script>
 
@@ -266,12 +302,14 @@
 		{#if isImageType}
 			<div class="form-control">
 				<label class="mb-1 block text-sm font-medium text-gray-700"> Image Upload </label>
-				<ImageUploadWidget
-					{currentImageUrl}
-					buttonText={initialResource ? 'Replace Image' : 'Upload Image'}
-					on:upload={handleImageUpload}
-					on:error={handleImageUploadError}
-				/>
+				{#key imageUploadKey}
+					<ImageUploadWidget
+						{currentImageUrl}
+						buttonText={initialResource ? 'Replace Image' : 'Upload Image'}
+						on:upload={handleImageUpload}
+						on:error={handleImageUploadError}
+					/>
+				{/key}
 				{#if hasImageUpload || currentImageUrl}
 					<p class="mt-2 text-xs text-green-600">
 						✓ {hasImageUpload ? 'New image uploaded successfully' : 'Current image will be used'}

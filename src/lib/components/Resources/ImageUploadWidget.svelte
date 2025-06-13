@@ -1,7 +1,10 @@
 <!-- src/lib/components/Resources/ImageUploadWidget.svelte -->
 <script lang="ts">
 	import { createEventDispatcher, onMount } from 'svelte';
-	import { getUploadWidgetOptions } from '$lib/utils/cloudinary';
+	import {
+		PUBLIC_CLOUDINARY_CLOUD_NAME,
+		PUBLIC_CLOUDINARY_UPLOAD_PRESET,
+	} from '$env/static/public';
 	import type { CloudinaryUploadResult } from '$lib/utils/cloudinary';
 
 	// Props
@@ -24,9 +27,6 @@
 		error: string;
 	}>();
 
-	// Upload widget options
-	const widgetOptions = getUploadWidgetOptions();
-
 	onMount(() => {
 		// Load Cloudinary upload widget script
 		if (typeof window !== 'undefined') {
@@ -34,17 +34,13 @@
 				const script = document.createElement('script');
 				script.src = 'https://upload-widget.cloudinary.com/global/all.js';
 				script.async = true;
-				script.onload = () => {
-					// Add a small delay to ensure the widget is fully loaded
-					setTimeout(() => initializeWidget(), 100);
-				};
+				script.onload = () => initializeWidget();
 				script.onerror = () => {
 					error = 'Failed to load Cloudinary upload widget script';
 				};
 				document.head.appendChild(script);
 			} else {
-				// Widget already loaded, initialize immediately
-				setTimeout(() => initializeWidget(), 50);
+				initializeWidget();
 			}
 		}
 
@@ -66,10 +62,16 @@
 			return;
 		}
 
+		if (!PUBLIC_CLOUDINARY_CLOUD_NAME || !PUBLIC_CLOUDINARY_UPLOAD_PRESET) {
+			error = 'Cloudinary configuration missing. Check environment variables.';
+			return;
+		}
+
 		try {
-			// Create widget with minimal configuration
 			uploadWidget = window.cloudinary.createUploadWidget(
 				{
+					cloudName: PUBLIC_CLOUDINARY_CLOUD_NAME,
+					uploadPreset: PUBLIC_CLOUDINARY_UPLOAD_PRESET,
 					sources: ['local', 'camera', 'url'],
 					multiple: false,
 					maxFiles: 1,
@@ -79,8 +81,6 @@
 					folder: 'co2-resources',
 					cropping: true,
 					showSkipCropButton: true,
-					uploadSignature: generateSignature,
-					// Styling to match your app
 					styles: {
 						palette: {
 							window: '#ffffff',
@@ -102,41 +102,10 @@
 				handleUploadResult
 			);
 
-			error = null; // Clear any previous errors
+			error = null;
 		} catch (err) {
 			console.error('Error initializing upload widget:', err);
 			error = 'Failed to initialize upload widget. Please refresh the page and try again.';
-		}
-	}
-
-	async function generateSignature(callback: Function, paramsToSign: any) {
-		try {
-			isLoading = true;
-			error = null;
-
-			const response = await fetch('/api/upload/signature', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify({ paramsToSign }),
-			});
-
-			if (!response.ok) {
-				const errorData = await response.json();
-				throw new Error(errorData.error || 'Failed to generate signature');
-			}
-
-			const signatureData = await response.json();
-			callback(signatureData);
-		} catch (err) {
-			const errorMessage =
-				err instanceof Error ? err.message : 'Failed to generate upload signature';
-			error = errorMessage;
-			dispatch('error', errorMessage);
-			console.error('Signature generation error:', err);
-		} finally {
-			isLoading = false;
 		}
 	}
 
@@ -161,7 +130,7 @@
 				bytes: result.info.bytes,
 			};
 
-			error = null; // Clear any errors
+			error = null;
 			dispatch('upload', uploadResult);
 		}
 	}
@@ -185,7 +154,7 @@
 		}
 	}
 
-	// Reactive computed for button state
+	// Reactive computed values
 	const buttonDisabled = $derived(disabled || isLoading || !uploadWidget);
 	const buttonTextComputed = $derived(isLoading ? 'Loading...' : buttonText);
 </script>
@@ -194,7 +163,7 @@
 	<!-- Current Image Preview -->
 	{#if currentImageUrl}
 		<div class="mb-4">
-			<label class="mb-2 block text-sm font-medium text-gray-700"> Current Image </label>
+			<label class="mb-2 block text-sm font-medium text-gray-700">Current Image</label>
 			<div class="relative inline-block">
 				<img
 					src={currentImageUrl}
@@ -263,7 +232,7 @@
 		<p class="mt-2 text-xs text-gray-500">
 			{currentImageUrl
 				? 'Upload a new image to replace the current one'
-				: 'Select an image to upload'}
+				: 'Select an image to upload (max 10MB)'}
 		</p>
 	</div>
 
